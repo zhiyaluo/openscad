@@ -250,7 +250,7 @@ build_curl()
   if [ ! -f curl-$version.tar.bz2 ]; then
     wget http://curl.haxx.se/download/curl-$version.tar.bz2
   fi
-  bzip2 -cd curl-$version.tar.bz2 | tar -xf
+  bzip2 -cd curl-$version.tar.bz2 | tar xf -
   cd curl-$version
   mkdir build
   cd build
@@ -294,7 +294,7 @@ build_mpfr()
   if [ ! -f mpfr-$version.tar.bz2 ]; then
     curl --insecure -O http://www.mpfr.org/mpfr-$version/mpfr-$version.tar.bz2
   fi
-  bzip2 -cd xjf mpfr-$version.tar.bz2 | tar xf -
+  bzip2 -cd mpfr-$version.tar.bz2 | tar xf -
   cd mpfr-$version
   mkdir build
   cd build
