@@ -311,7 +311,7 @@ curl_sysver()
 cmake_sysver()
 {
   if [ ! -x $1/bin/cmake ]; then return ; fi
-  cmake_sysver_result=`$1/bin/cmake --version | grep cmake | sed s/"[^0-9.]"/" "/g | awk '{ print $1 }'`
+  cmake_sysver_result=`$1/bin/cmake --version | grep cmake | grep version | sed s/"[^0-9.]"/" "/g | awk '{ print $1 }'`
 }
 
 make_sysver()
@@ -557,6 +557,7 @@ find_installed_version()
         debug $depname"_sysver" $syspath
         eval $depname"_sysver" $syspath
         fsv_tmp=`eval echo "$"$depname"_sysver_result"`
+        debug fsv_tmp: $fsv_tmp `eval echo "$"$depname"_sysver_result"`
         if [ $fsv_tmp ]; then break; fi
       fi
     done
@@ -642,8 +643,8 @@ main()
 {
   #deps="qt qscintilla2 cgal gmp mpfr boost opencsg glew eigen glib2 fontconfig freetype2 harfbuzz bison flex make"
   #deps="$deps curl git" # not technically necessary for build
-  #deps="$deps python cmake imagemagick" # only needed for tests
-  deps="cgal"
+  deps="$deps python cmake imagemagick" # only needed for tests
+  #deps="cgal"
   pretty_print title
   for depname in $deps; do
     debug "processing $dep"
