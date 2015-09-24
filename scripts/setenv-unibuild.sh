@@ -108,6 +108,13 @@ setenv_netbsd_clang()
  echo QMAKESPEC has been modified: $QMAKESPEC
 }
 
+setenv_sunos()
+{
+ PKG_CONFIG_PATH=$PKG_CONFIG_PATH:/usr/lib/pkgconfig
+ export PKG_CONFIG_PATH
+ echo PKG_CONFIG_PATH modified: $PKG_CONFIG_PATH
+}
+
 clean_note()
 {
  if [ "`command -v qmake-qt4`" ]; then
@@ -133,6 +140,9 @@ elif [ "`uname | grep -i netbsd`" ]; then
  if [ "`echo $* | grep clang`" ]; then
   setenv_netbsd_clang
  fi
+elif [ "`uname | grep SunOS`" ]; then
+ setenv_common
+ setenv_sunos
 else
  # guess
  setenv_common
