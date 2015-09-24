@@ -376,13 +376,16 @@ get_minversion_from_readme()
   local grv_tmp=
   for READFILE in README.md ../README.md "`dirname "$0"`/../README.md"
   do
-    if [ ! -e "$READFILE" ]
-    then
+    if [ ! -e "$READFILE" ]; then
       debug "get_minversion_from_readme $READFILE not found"
       continue
     fi
     debug "get_minversion_from_readme $READFILE found"
-    grep -i ".$depname.*([0-9]" $READFILE || continue
+    if [ "`grep -i ".$depname.*([0-9]" $READFILE`" ]; then
+      debug $depname found in $READFILE
+    else
+      continue
+    fi
     grv_tmp="`grep -i ".$depname.*([0-9]" $READFILE | sed s/"*"//`"
     debug $grv_tmp
     grv_tmp="`echo $grv_tmp | awk -F"(" '{print $2}'`"
@@ -557,7 +560,7 @@ find_installed_version()
         debug $depname"_sysver" $syspath
         eval $depname"_sysver" $syspath
         fsv_tmp=`eval echo "$"$depname"_sysver_result"`
-        debug fsv_tmp: $fsv_tmp `eval echo "$"$depname"_sysver_result"`
+        # debug fsv_tmp: $fsv_tmp `eval echo "$"$depname"_sysver_result"`
         if [ $fsv_tmp ]; then break; fi
       fi
     done
