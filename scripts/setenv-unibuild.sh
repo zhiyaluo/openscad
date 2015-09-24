@@ -125,7 +125,12 @@ clean_note()
  echo "Please re-run" $QMAKEBIN "and run 'make clean' if necessary"
 }
 
-if [ "`uname | grep -i 'linux\|debian'`" ]; then
+if [ "`uname | grep -i linux`" ]; then
+ setenv_common
+ if [ "`echo $* | grep clang`" ]; then
+  setenv_linux_clang
+ fi
+elif [ "`uname | grep -i debian`" ]; then
  setenv_common
  if [ "`echo $* | grep clang`" ]; then
   setenv_linux_clang

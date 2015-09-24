@@ -1,5 +1,3 @@
-#!/bin/sh -e
-
 # uni-build-dependencies by don bright 2012. copyright assigned to
 # Marius Kintel and Clifford Wolf, 2012. released under the GPL 2, or
 # later, as described in the file named 'COPYING' in OpenSCAD's project root.
@@ -111,7 +109,7 @@ build_glu()
   if [ ! -f glu-$version.tar.gz ]; then
     curl -O http://cgit.freedesktop.org/mesa/glu/snapshot/glu-$version.tar.gz
   fi
-  tar xzf glu-$version.tar.gz
+  gzip -cd glu-$version.tar.gz | tar xf -
   cd glu-$version
   ./autogen.sh --prefix=$DEPLOYDIR
   make -j$NUMCPU
@@ -131,7 +129,7 @@ build_qt4()
   if [ ! -f qt-everywhere-opensource-src-$version.tar.gz ]; then
     curl -O http://releases.qt-project.org/qt4/source/qt-everywhere-opensource-src-$version.tar.gz
   fi
-  tar xzf qt-everywhere-opensource-src-$version.tar.gz
+  gzip -cd qt-everywhere-opensource-src-$version.tar.gz | tar xf -
   cd qt-everywhere-opensource-src-$version
   ./configure -prefix $DEPLOYDIR -opensource -confirm-license -fast -no-qt3support -no-svg -no-phonon -no-audio-backend -no-multimedia -no-javascript-jit -no-script -no-scripttools -no-declarative -no-xmlpatterns -nomake demos -nomake examples -nomake docs -nomake translations -no-webkit
   make -j$NUMCPU
@@ -159,7 +157,7 @@ build_qt5()
   if [ ! -f qt-everywhere-opensource-src-$version.tar.gz ]; then
      curl -O -L http://download.qt-project.org/official_releases/qt/$v/$version/single/qt-everywhere-opensource-src-$version.tar.gz
   fi
-  tar xzf qt-everywhere-opensource-src-$version.tar.gz
+  gzip -cd qt-everywhere-opensource-src-$version.tar.gz | tar xf -
   cd qt-everywhere-opensource-src-$version
   ./configure -prefix $DEPLOYDIR -release -static -opensource -confirm-license \
                 -nomake examples -nomake tests \
@@ -187,7 +185,7 @@ build_qt5scintilla2()
   if [ ! -f QScintilla-gpl-$version.tar.gz ]; then
      curl -L -o "QScintilla-gpl-$version.tar.gz" "http://downloads.sourceforge.net/project/pyqt/QScintilla2/QScintilla-$version/QScintilla-gpl-$version.tar.gz?use_mirror=switch"
   fi
-  tar xzf QScintilla-gpl-$version.tar.gz
+  gzip -cd QScintilla-gpl-$version.tar.gz | tar xf -
   cd QScintilla-gpl-$version/Qt4Qt5/
   qmake CONFIG+=staticlib
   make -j"$NUMCPU" install
@@ -202,7 +200,7 @@ build_bison()
   if [ ! -f bison-$version.tar.gz ]; then
     curl --insecure -O http://ftp.gnu.org/gnu/bison/bison-$version.tar.gz
   fi
-  tar zxf bison-$version.tar.gz
+  gzip -cd bison-$version.tar.gz | tar xf -
   cd bison-$version
   ./configure --prefix=$DEPLOYDIR
   make -j$NUMCPU
@@ -218,7 +216,7 @@ build_git()
   if [ ! -f git-$version.tar.gz ]; then
     curl --insecure -O http://git-core.googlecode.com/files/git-$version.tar.gz
   fi
-  tar zxf git-$version.tar.gz
+  gzip -cd git-$version.tar.gz | tar xf -
   cd git-$version
   ./configure --prefix=$DEPLOYDIR
   make -j$NUMCPU
@@ -234,7 +232,7 @@ build_cmake()
   if [ ! -f cmake-$version.tar.gz ]; then
     curl --insecure -O http://www.cmake.org/files/v2.8/cmake-$version.tar.gz
   fi
-  tar zxf cmake-$version.tar.gz
+  gzip -cd cmake-$version.tar.gz | tar xf -
   cd cmake-$version
   mkdir build
   cd build
@@ -252,7 +250,7 @@ build_curl()
   if [ ! -f curl-$version.tar.bz2 ]; then
     wget http://curl.haxx.se/download/curl-$version.tar.bz2
   fi
-  tar xjf curl-$version.tar.bz2
+  bzip2 -cd curl-$version.tar.bz2 | tar -xf
   cd curl-$version
   mkdir build
   cd build
@@ -274,7 +272,7 @@ build_gmp()
   if [ ! -f gmp-$version.tar.bz2 ]; then
     curl --insecure -O https://gmplib.org/download/gmp/gmp-$version.tar.bz2
   fi
-  tar xjf gmp-$version.tar.bz2
+  bzip2 -cd gmp-$version.tar.bz2 | tar xf -
   cd gmp-$version
   mkdir build
   cd build
@@ -296,7 +294,7 @@ build_mpfr()
   if [ ! -f mpfr-$version.tar.bz2 ]; then
     curl --insecure -O http://www.mpfr.org/mpfr-$version/mpfr-$version.tar.bz2
   fi
-  tar xjf mpfr-$version.tar.bz2
+  bzip2 -cd xjf mpfr-$version.tar.bz2 | tar xf -
   cd mpfr-$version
   mkdir build
   cd build
@@ -324,7 +322,7 @@ build_boost()
     echo download failed. 
     exit 1
   fi
-  tar xjf boost_$bversion.tar.bz2
+  bzip2 -cd boost_$bversion.tar.bz2 | tar xf -
   cd boost_$bversion
   if [ "`gcc --version|grep 4.7`" ]; then
     if [ "`echo $version | grep 1.47`" ]; then
@@ -455,7 +453,7 @@ build_glew()
   if [ ! -f glew-$version.tgz ]; then
     curl --insecure -LO http://downloads.sourceforge.net/project/glew/glew/$version/glew-$version.tgz
   fi
-  tar xzf glew-$version.tgz
+  gzip -cd glew-$version.tgz | tar xf -
   cd glew-$version
   mkdir -p $DEPLOYDIR/lib/pkgconfig
 
@@ -508,7 +506,7 @@ build_opencsg()
   if [ ! -f OpenCSG-$version.tar.gz ]; then
     curl --insecure -O http://www.opencsg.org/OpenCSG-$version.tar.gz
   fi
-  tar xzf OpenCSG-$version.tar.gz
+  gzip -cd OpenCSG-$version.tar.gz | tar xf -
   cd OpenCSG-$version
 
   # modify the .pro file for qmake, then use qmake to
@@ -596,7 +594,7 @@ build_eigen()
     curl --insecure -LO http://bitbucket.org/eigen/eigen/get/$version.tar.bz2
     mv $version.tar.bz2 eigen-$version.tar.bz2
   fi
-  tar xjf eigen-$version.tar.bz2
+  bzip2 -cd eigen-$version.tar.bz2 | tar xf -
   ln -s ./$EIGENDIR eigen-$version
   cd eigen-$version
   mkdir build
@@ -647,7 +645,7 @@ build_pkgconfig()
   if [ ! -f "pkg-config-$version.tar.gz" ]; then
     curl --insecure -LO "http://pkgconfig.freedesktop.org/releases/pkg-config-$version.tar.gz"
   fi
-  tar xzf "pkg-config-$version.tar.gz"
+  gzip -cd "pkg-config-$version.tar.gz" | tar xf -
   cd "pkg-config-$version"
 
   ./configure --prefix="$DEPLOYDIR" --with-internal-glib
@@ -670,7 +668,7 @@ build_libffi()
     curl --insecure -LO "ftp://sourceware.org/pub/libffi/libffi-$version.tar.gz"
     curl --insecure -LO "http://www.linuxfromscratch.org/patches/blfs/svn/libffi-$version-includedir-1.patch"
   fi
-  tar xzf "libffi-$version.tar.gz"
+  gzip -cd "libffi-$version.tar.gz" | tar xf -
   cd "libffi-$version"
   if [ ! "`command -v patch`" ]; then
     echo cannot proceed, need 'patch' program
@@ -712,10 +710,10 @@ build_libffi()
 # the 'dirname' command installed
 
 if [ "`command -v dirname`" ]; then
-  RUNDIR=$PWD
+  RUNDIR=`pwd`
   OPENSCAD_SCRIPTDIR=`dirname $0`
   cd $OPENSCAD_SCRIPTDIR
-  OPENSCAD_SCRIPTDIR=$PWD
+  OPENSCAD_SCRIPTDIR=`pwd`
   cd $RUNDIR
 else
   if [ ! -f openscad.pro ]; then
