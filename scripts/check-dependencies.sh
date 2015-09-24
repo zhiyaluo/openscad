@@ -356,7 +356,7 @@ pkg_config_search()
   if [ ! $1 ]; then return; fi
   pkgname=$1
 
-  pkg-config --exists $pkgname >> .check-dependencies.log 2>&1
+  pkg-config --exists $pkgname > /dev/null 2>&1
   if [ $? = 0 ]; then
     pkg_config_search_result=`pkg-config --modversion $pkgname`
   else
