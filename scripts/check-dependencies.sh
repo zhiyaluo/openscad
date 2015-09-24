@@ -356,7 +356,7 @@ pkg_config_search()
   if [ ! $1 ]; then return; fi
   pkgname=$1
 
-  pkg-config --exists $pkgname 2>&1
+  pkg-config --exists $pkgname >> .check-dependencies.log 2>&1
   if [ $? = 0 ]; then
     pkg_config_search_result=`pkg-config --modversion $pkgname`
   else
@@ -382,7 +382,7 @@ get_minversion_from_readme()
       continue
     fi
     debug "get_minversion_from_readme $READFILE found"
-    grep -qi ".$depname.*([0-9]" $READFILE || continue
+    grep -i ".$depname.*([0-9]" $READFILE || continue
     grv_tmp="`grep -i ".$depname.*([0-9]" $READFILE | sed s/"*"//`"
     debug $grv_tmp
     grv_tmp="`echo $grv_tmp | awk -F"(" '{print $2}'`"
@@ -640,10 +640,10 @@ checkargs()
 
 main()
 {
-  deps="qt qscintilla2 cgal gmp mpfr boost opencsg glew eigen glib2 fontconfig freetype2 harfbuzz bison flex make"
+  #deps="qt qscintilla2 cgal gmp mpfr boost opencsg glew eigen glib2 fontconfig freetype2 harfbuzz bison flex make"
   #deps="$deps curl git" # not technically necessary for build
   #deps="$deps python cmake imagemagick" # only needed for tests
-  #deps="cgal"
+  deps="cgal"
   pretty_print title
   for depname in $deps; do
     debug "processing $dep"
