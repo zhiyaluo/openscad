@@ -318,6 +318,7 @@ make_sysver()
 {
   make_sysver_tmp=
   binmake=$1/bin/make
+  if [ "`command -v gmake`" ]; then binmake=`which gmake`;fi
   if [ -x $1/bin/gmake ]; then binmake=$1/bin/gmake ;fi
   if [ ! -x $binmake ]; then return ;fi
   make_sysver_tmp=`$binmake --version 2>&1`
@@ -499,11 +500,12 @@ compare_version()
 
 pretty_print()
 {
-  # there are four columns, passed as $1 $2 $3 and $4
+  # there are five columns, passed as $1 $2 $3 $4 and $5
   # 1 = name of dependency
   # 2 = version found in README
   # 3 = version found on system
   # 4 = whether it is OK or not
+  # 5 = location
 
   debug pretty_print $*
 
@@ -519,8 +521,8 @@ pretty_print()
   nocolor="\033[0m"
 
   ppstr="%s%-12s"
-  pp_format='{printf("'$ppstr$ppstr$ppstr$ppstr$nocolor'\n",$1,$2,$3,$4,$5,$6,$7,$8)}'
-  pp_title="$gray depname $gray minimum $gray found $gray OKness"
+  pp_format='{printf("'$ppstr$ppstr$ppstr$ppstr$ppstr$nocolor'\n",$1,$2,$3,$4,$5,$6,$7,$8,$9,$10)}'
+  pp_title="$gray depname $gray minimum $gray found $gray OKness $gray location"
   if [ $1 ]; then pp_depname=$1; fi
   if [ $pp_depname = "title" ]; then
     echo -e $pp_title | awk $pp_format
@@ -530,6 +532,7 @@ pretty_print()
   if [ $2 ]; then pp_minver=$2; else pp_minver="unknown"; fi
   if [ $3 ]; then pp_foundver=$3; else pp_foundver="unknown"; fi
   if [ $4 ]; then pp_okness=$4; else pp_okness="NotOK"; fi
+  if [ $5 ]; then pp_location=$5; else pp_location="unknown"; fi
 
   if [ $pp_okness = "NotOK" ]; then
     pp_foundcolor=$purple;
@@ -538,18 +541,21 @@ pretty_print()
     pp_foundcolor=$gray;
     pp_cmpcolor=$green;
   fi
-  echo -e $cyan $pp_depname $gray $pp_minver $pp_foundcolor $pp_foundver $pp_cmpcolor $pp_okness | awk $pp_format
+  echo -e $cyan $pp_depname $gray $pp_minver $pp_foundcolor $pp_foundver $pp_cmpcolor $pp_okness $gray $pp_location | awk $pp_format
   pp_depname=
   pp_minver=
   pp_foundver=
   pp_okness=
+  pp_location=
 }
 
 find_installed_version()
 {
   debug find_installed_version $*
   find_installed_version_result=unknown
+  find_installed_version_result2=unknown
   fsv_tmp=
+  fsv_tmp2=
   depname=$1
 
   # try to find/parse headers and/or binary output
@@ -560,7 +566,7 @@ find_installed_version()
         debug $depname"_sysver" $syspath
         eval $depname"_sysver" $syspath
         fsv_tmp=`eval echo "$"$depname"_sysver_result"`
-        # debug fsv_tmp: $fsv_tmp `eval echo "$"$depname"_sysver_result"`
+        fsv_tmp2=$syspath
         if [ $fsv_tmp ]; then break; fi
       fi
     done
@@ -572,11 +578,13 @@ find_installed_version()
       debug plain search failed. trying pkg_config...
       pkg_config_search $depname
       fsv_tmp=$pkg_config_search_result
+      fsv_tmp2="pkg_config"
     fi
   fi
 
   if [ $fsv_tmp ]; then
     find_installed_version_result=$fsv_tmp
+    find_installed_version_result2=$fsv_tmp2
   else
     debug all searches failed. unknown version.
   fi
@@ -653,11 +661,12 @@ main()
     debug "processing $dep"
     find_installed_version $depname
     dep_sysver=$find_installed_version_result
+    dep_location=$find_installed_version_result2
     find_min_version $depname
     dep_minver=$find_min_version_result
     compare_version $dep_minver $dep_sysver
     dep_compare=$compare_version_result
-    pretty_print $depname "$dep_minver" "$dep_sysver" $dep_compare
+    pretty_print $depname "$dep_minver" "$dep_sysver" $dep_compare "$dep_location"
   done
   check_old_local
   check_misc
