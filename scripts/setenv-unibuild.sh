@@ -25,6 +25,8 @@ setenv_common()
  export LD_RUN_PATH=$DEPLOYDIR/lib:$DEPLOYDIR/lib64
  export OPENSCAD_LIBRARIES=$DEPLOYDIR
  export GLEWDIR=$DEPLOYDIR
+ export TARCMD=tar
+ export MAKECMD=make
 
  echo BASEDIR: $BASEDIR
  echo DEPLOYDIR: $DEPLOYDIR
@@ -33,12 +35,8 @@ setenv_common()
  echo LD_RUN_PATH modified
  echo OPENSCAD_LIBRARIES modified
  echo GLEWDIR modified
-
- if [ "`uname -m | grep sparc64`" ]; then
-   echo detected sparc64. forcing 32 bit with export ABI=32
-   ABI=32
-   export ABI
- fi
+ echo TARCMD: $TARCMD
+ echo MAKECMD: $MAKECMD
 }
 
 setenv_freebsd()
@@ -110,9 +108,24 @@ setenv_netbsd_clang()
 
 setenv_sunos()
 {
+ # SunOS compiler is weird.
+ CC='gcc -m64'
+ CXX='g++ -m64'
  PKG_CONFIG_PATH=$PKG_CONFIG_PATH:/usr/lib/pkgconfig
+ TARCMD=gtar
+ MAKECMD=gmake
+
  export PKG_CONFIG_PATH
+ export CC
+ export CXX
+ export TARCMD
+ export MAKECMD
+
+ echo CC has been modified: $CC
+ echo CXX has been modified: $CXX
  echo PKG_CONFIG_PATH modified: $PKG_CONFIG_PATH
+ echo TARCMD has been modified: $TARCMD
+ echo MAKECMD has been modified: $MAKECMD
 }
 
 clean_note()

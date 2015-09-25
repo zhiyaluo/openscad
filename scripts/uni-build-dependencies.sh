@@ -107,13 +107,14 @@ build_glu()
   cd $BASEDIR/src
   rm -rf glu-$version
   if [ ! -f glu-$version.tar.gz ]; then
+    echo downloading
     curl -O http://cgit.freedesktop.org/mesa/glu/snapshot/glu-$version.tar.gz
   fi
-  gzip -cd glu-$version.tar.gz | tar xf -
+  gzip -cd glu-$version.tar.gz | $TARCMD xf -
   cd glu-$version
   ./autogen.sh --prefix=$DEPLOYDIR
-  make -j$NUMCPU
-  make install
+  $MAKECMD -j$NUMCPU
+  $MAKECMD install
 }
 
 build_qt4()
@@ -127,13 +128,14 @@ build_qt4()
   cd $BASEDIR/src
   rm -rf qt-everywhere-opensource-src-$version
   if [ ! -f qt-everywhere-opensource-src-$version.tar.gz ]; then
+    echo downloading
     curl -O http://releases.qt-project.org/qt4/source/qt-everywhere-opensource-src-$version.tar.gz
   fi
-  gzip -cd qt-everywhere-opensource-src-$version.tar.gz | tar xf -
+  gzip -cd qt-everywhere-opensource-src-$version.tar.gz | $TARCMD xf -
   cd qt-everywhere-opensource-src-$version
   ./configure -prefix $DEPLOYDIR -opensource -confirm-license -fast -no-qt3support -no-svg -no-phonon -no-audio-backend -no-multimedia -no-javascript-jit -no-script -no-scripttools -no-declarative -no-xmlpatterns -nomake demos -nomake examples -nomake docs -nomake translations -no-webkit
-  make -j$NUMCPU
-  make install
+  $MAKECMD -j$NUMCPU
+  $MAKECMD install
   QTDIR=$DEPLOYDIR
   export QTDIR
   echo "----------"
@@ -155,9 +157,10 @@ build_qt5()
   rm -rf qt-everywhere-opensource-src-$version
   v=`echo "$version" | sed -e 's/\.[0-9]$//'`
   if [ ! -f qt-everywhere-opensource-src-$version.tar.gz ]; then
+     echo downloading
      curl -O -L http://download.qt-project.org/official_releases/qt/$v/$version/single/qt-everywhere-opensource-src-$version.tar.gz
   fi
-  gzip -cd qt-everywhere-opensource-src-$version.tar.gz | tar xf -
+  gzip -cd qt-everywhere-opensource-src-$version.tar.gz | $TARCMD xf -
   cd qt-everywhere-opensource-src-$version
   ./configure -prefix $DEPLOYDIR -release -static -opensource -confirm-license \
                 -nomake examples -nomake tests \
@@ -167,7 +170,7 @@ build_qt5()
                 -skip enginio -skip graphicaleffects -skip location -skip multimedia \
                 -skip quick1 -skip quickcontrols -skip script -skip sensors -skip serialport \
                 -skip svg -skip webkit -skip webkit-examples -skip websockets -skip xmlpatterns
-  make -j"$NUMCPU" install
+  $MAKECMD -j"$NUMCPU" install
 }
 
 build_qt5scintilla2()
@@ -183,12 +186,13 @@ build_qt5scintilla2()
   cd $BASEDIR/src
   #rm -rf QScintilla-gpl-$version.tar.gz
   if [ ! -f QScintilla-gpl-$version.tar.gz ]; then
+     echo downloading
      curl -L -o "QScintilla-gpl-$version.tar.gz" "http://downloads.sourceforge.net/project/pyqt/QScintilla2/QScintilla-$version/QScintilla-gpl-$version.tar.gz?use_mirror=switch"
   fi
-  gzip -cd QScintilla-gpl-$version.tar.gz | tar xf -
+  gzip -cd QScintilla-gpl-$version.tar.gz | $TARCMD xf -
   cd QScintilla-gpl-$version/Qt4Qt5/
   qmake CONFIG+=staticlib
-  make -j"$NUMCPU" install
+  $MAKECMD -j"$NUMCPU" install
 }
 
 build_bison()
@@ -198,13 +202,14 @@ build_bison()
   cd $BASEDIR/src
   rm -rf bison-$version
   if [ ! -f bison-$version.tar.gz ]; then
+    echo downloading
     curl --insecure -O http://ftp.gnu.org/gnu/bison/bison-$version.tar.gz
   fi
-  gzip -cd bison-$version.tar.gz | tar xf -
+  gzip -cd bison-$version.tar.gz | $TARCMD xf -
   cd bison-$version
   ./configure --prefix=$DEPLOYDIR
-  make -j$NUMCPU
-  make install
+  $MAKECMD -j$NUMCPU
+  $MAKECMD install
 }
 
 build_git()
@@ -214,31 +219,34 @@ build_git()
   cd $BASEDIR/src
   rm -rf git-$version
   if [ ! -f git-$version.tar.gz ]; then
+    echo downloading
     curl --insecure -O http://git-core.googlecode.com/files/git-$version.tar.gz
   fi
-  gzip -cd git-$version.tar.gz | tar xf -
+  gzip -cd git-$version.tar.gz | $TARCMD xf -
   cd git-$version
   ./configure --prefix=$DEPLOYDIR
-  make -j$NUMCPU
-  make install
+  $MAKECMD -j$NUMCPU
+  $MAKECMD install
 }
 
 build_cmake()
 {
-  version=$1
-  echo "Building cmake" $version "..."
+  version=$2
+  versionshort=$1
+  echo "Building cmake (" $versionshort ")" $version "..."
   cd $BASEDIR/src
-  rm -rf cmake-$version
+  rm -rf ./cmake-$version
   if [ ! -f cmake-$version.tar.gz ]; then
-    curl --insecure -O http://www.cmake.org/files/v2.8/cmake-$version.tar.gz
+    echo downloading
+    curl --insecure -O http://www.cmake.org/files/v$versionshort/cmake-$version.tar.gz
   fi
-  gzip -cd cmake-$version.tar.gz | tar xf -
+  gzip -cd cmake-$version.tar.gz | $TARCMD xf -
   cd cmake-$version
   mkdir build
   cd build
   ../configure --prefix=$DEPLOYDIR
-  make -j$NUMCPU
-  make install
+  $MAKECMD -j$NUMCPU
+  $MAKECMD install
 }
 
 build_curl()
@@ -248,15 +256,16 @@ build_curl()
   cd $BASEDIR/src
   rm -rf curl-$version
   if [ ! -f curl-$version.tar.bz2 ]; then
+    echo downloading
     wget http://curl.haxx.se/download/curl-$version.tar.bz2
   fi
-  bzip2 -cd curl-$version.tar.bz2 | tar xf -
+  bzip2 -cd curl-$version.tar.bz2 | $TARCMD xf -
   cd curl-$version
   mkdir build
   cd build
   ../configure --prefix=$DEPLOYDIR
-  make -j$NUMCPU
-  make install
+  $MAKECMD -j$NUMCPU
+  $MAKECMD install
 }
 
 build_gmp()
@@ -270,15 +279,16 @@ build_gmp()
   cd $BASEDIR/src
   rm -rf gmp-$version
   if [ ! -f gmp-$version.tar.bz2 ]; then
+    echo downloading
     curl --insecure -O https://gmplib.org/download/gmp/gmp-$version.tar.bz2
   fi
-  bzip2 -cd gmp-$version.tar.bz2 | tar xf -
+  bzip2 -cd gmp-$version.tar.bz2 | $TARCMD xf -
   cd gmp-$version
   mkdir build
   cd build
   ../configure --prefix=$DEPLOYDIR --enable-cxx
-  make -j$NUMCPU
-  make install
+  $MAKECMD -j$NUMCPU
+  $MAKECMD install
 }
 
 build_mpfr()
@@ -292,15 +302,16 @@ build_mpfr()
   cd $BASEDIR/src
   rm -rf mpfr-$version
   if [ ! -f mpfr-$version.tar.bz2 ]; then
+    echo downloading
     curl --insecure -O http://www.mpfr.org/mpfr-$version/mpfr-$version.tar.bz2
   fi
-  bzip2 -cd mpfr-$version.tar.bz2 | tar xf -
+  bzip2 -cd mpfr-$version.tar.bz2 | $TARCMD xf -
   cd mpfr-$version
   mkdir build
   cd build
   ../configure --prefix=$DEPLOYDIR --with-gmp=$DEPLOYDIR
-  make -j$NUMCPU
-  make install
+  $MAKECMD -j$NUMCPU
+  $MAKECMD install
   cd ..
 }
 
@@ -316,13 +327,14 @@ build_boost()
   cd $BASEDIR/src
   rm -rf boost_$bversion
   if [ ! -f boost_$bversion.tar.bz2 ]; then
+    echo downloading
     curl --insecure -LO http://downloads.sourceforge.net/project/boost/boost/$version/boost_$bversion.tar.bz2
   fi
   if [ ! $? -eq 0 ]; then
     echo download failed. 
     exit 1
   fi
-  bzip2 -cd boost_$bversion.tar.bz2 | tar xf -
+  bzip2 -cd boost_$bversion.tar.bz2 | $TARCMD xf -
   cd boost_$bversion
   if [ "`gcc --version|grep 4.7`" ]; then
     if [ "`echo $version | grep 1.47`" ]; then
@@ -342,7 +354,7 @@ build_boost()
   elif [ -e ./bjam ]; then
     BJAMBIN=./bjam
   elif [ -e ./Makefile ]; then
-    BJAMBIN=make
+    BJAMBIN=$MAKECMD
   fi
   if [ $CXX ]; then
     if [ $CXX = "clang++" ]; then
@@ -374,7 +386,7 @@ build_cgal()
   version=$1
   echo "Building CGAL" $version "..."
   cd $BASEDIR/src
-  rm -rf CGAL-$version
+  #rm -rf CGAL-$version
   ver4_4="curl --insecure -O https://gforge.inria.fr/frs/download.php/file/33524/CGAL-4.4.tar.bz2"
   ver4_2="curl --insecure -O https://gforge.inria.fr/frs/download.php/32360/CGAL-4.2.tar.bz2"
   ver4_1="curl --insecure -O https://gforge.inria.fr/frs/download.php/31640/CGAL-4.1.tar.bz2"
@@ -398,14 +410,16 @@ build_cgal()
 
   zipper=gzip
   suffix=gz
+  tarer=tar
   if [ -e CGAL-$version.tar.bz2 ]; then
     zipper=bzip2
     suffix=bz2
   fi
+  if [ "`uname | grep SunOS`" ]; then
+    tarrer=gtar
+  fi
 
-  $zipper -f -d CGAL-$version.tar.$suffix;
-  tar xf CGAL-$version.tar
-
+  #$zipper -cd CGAL-$version.tar.$suffix | $tarrer xf -
   cd CGAL-$version
 
   # older cmakes have buggy FindBoost that can result in
@@ -422,6 +436,13 @@ build_cgal()
     CGAL_BUILDTYPE="Debug"
   fi
 
+  if [ "`uname | grep SunOS`" ]; then
+    export CC=gcc
+    export CXX=g++
+  else
+    ENVARS=''
+  fi
+
   DEBUGBOOSTFIND=0 # for debugging FindBoost.cmake (not for debugging boost)
   Boost_NO_SYSTEM_PATHS=1
   if [ "`echo $2 | grep use-sys-libs`" ]; then
@@ -429,8 +450,8 @@ build_cgal()
   else
     cmake -DCMAKE_INSTALL_PREFIX=$DEPLOYDIR -DGMP_INCLUDE_DIR=$DEPLOYDIR/include -DGMP_LIBRARIES=$DEPLOYDIR/lib/libgmp.so -DGMPXX_LIBRARIES=$DEPLOYDIR/lib/libgmpxx.so -DGMPXX_INCLUDE_DIR=$DEPLOYDIR/include -DMPFR_INCLUDE_DIR=$DEPLOYDIR/include -DMPFR_LIBRARIES=$DEPLOYDIR/lib/libmpfr.so -DWITH_CGAL_Qt3=OFF -DWITH_CGAL_Qt4=OFF -DWITH_CGAL_ImageIO=OFF -DBOOST_LIBRARYDIR=$DEPLOYDIR/lib -DBOOST_INCLUDEDIR=$DEPLOYDIR/include -DCMAKE_BUILD_TYPE=$CGAL_BUILDTYPE -DBoost_DEBUG=$DEBUGBOOSTFIND -DBoost_NO_SYSTEM_PATHS=1 ..
   fi
-  make -j$NUMCPU
-  make install
+  $MAKECMD -j$NUMCPU
+  $MAKECMD install
 }
 
 build_glew()
@@ -451,9 +472,10 @@ build_glew()
   cd $BASEDIR/src
   rm -rf glew-$version
   if [ ! -f glew-$version.tgz ]; then
+    echo downloading
     curl --insecure -LO http://downloads.sourceforge.net/project/glew/glew/$version/glew-$version.tgz
   fi
-  gzip -cd glew-$version.tgz | tar xf -
+  gzip -cd glew-$version.tgz | $TARCMD xf -
   cd glew-$version
   mkdir -p $DEPLOYDIR/lib/pkgconfig
 
@@ -479,18 +501,17 @@ build_glew()
     sed -ibak s/"CC = cc"/"# CC = cc"/ config/Makefile.linux
   fi
 
-  MAKER=make
   if [ "`uname | grep BSD`" ]; then
     if [ "`command -v gmake`" ]; then
-      MAKER=gmake
+      echo "building glew with gnu make"
     else
       echo "building glew on BSD requires gmake (gnu make)"
       exit
     fi
   fi
 
-  GLEW_DEST=$DEPLOYDIR $MAKER -j$NUMCPU
-  GLEW_DEST=$DEPLOYDIR $MAKER install
+  GLEW_DEST=$DEPLOYDIR $MAKECMD -j$NUMCPU
+  GLEW_DEST=$DEPLOYDIR $MAKECMD install
 }
 
 build_opencsg_makefile()
@@ -517,9 +538,10 @@ build_opencsg()
   cd $BASEDIR/src
   rm -rf OpenCSG-$version
   if [ ! -f OpenCSG-$version.tar.gz ]; then
+    echo downloading
     curl --insecure -O http://www.opencsg.org/OpenCSG-$version.tar.gz
   fi
-  gzip -cd OpenCSG-$version.tar.gz | tar xf -
+  gzip -cd OpenCSG-$version.tar.gz | $TARCMD xf -
   cd OpenCSG-$version
 
   # modify the .pro file for qmake, then use qmake to
@@ -536,9 +558,7 @@ build_opencsg()
   echo GLU_INCLUDE $GLU_INCLUDE
 
   if [ "`uname | grep SunOS`" ]; then
-    OPENCSG_QMAKE=make
-    cp Makefile Makefile.bak
-    cat Makefile.bak | sed s/"make -C"/make/g > Makefile
+    OPENCSG_QMAKE=$MAKECMD
     build_opencsg_makefile
     tmp=$version
     version=$tmp
@@ -554,7 +574,7 @@ build_opencsg()
     OPENCSG_QMAKE=qmake
   else
     echo qmake not found... using standard OpenCSG makefiles
-    OPENCSG_QMAKE=make
+    OPENCSG_QMAKE=$MAKECMD
     build_opencsg_makefile
     tmp=$version
     version=$tmp
@@ -574,8 +594,8 @@ build_opencsg()
   make
 
   INSTALLER=instal
-  if [ "`command -v ginstall`" ]; then
-   INSTALLER=ginstall # needed on SunOS
+  if [ "`uname | grep SunOS`" ]; then
+   INSTALLER=ginstall
   fi
 
   ls lib/* include/*
@@ -611,17 +631,22 @@ build_eigen()
   fi
   rm -rf ./$EIGENDIR
   if [ ! -f eigen-$version.tar.bz2 ]; then
+    echo downloading
     curl --insecure -LO http://bitbucket.org/eigen/eigen/get/$version.tar.bz2
     mv $version.tar.bz2 eigen-$version.tar.bz2
   fi
-  bzip2 -cd eigen-$version.tar.bz2 | tar xf -
+  bzip2 -cd eigen-$version.tar.bz2 | $TARCMD xf -
   ln -s ./$EIGENDIR eigen-$version
   cd eigen-$version
-  mkdir build
-  cd build
-  cmake -DCMAKE_INSTALL_PREFIX=$DEPLOYDIR -DEIGEN_TEST_NO_OPENGL=1 ..
-  make -j$NUMCPU
-  make install
+  rm -rf $DEPLOYDIR/include/eigen3
+  mkdir $DEPLOYDIR/include
+  mv ./Eigen $DEPLOYDIR/include/eigen3
+  # Eigen's cmake install-to-prefix is broken. 
+  #  mkdir build
+  #  cd build
+  #  cmake -DCMAKE_INSTALL_PREFIX=$DEPLOYDIR -DEIGEN_TEST_NO_OPENGL=1 
+  #  $MAKECMD -j$NUMCPU
+  #  $MAKECMD install
 }
 
 
@@ -647,8 +672,8 @@ build_eigen()
 #  cd "gettext-$version"
 #
 #  ./configure --prefix="$DEPLOYDIR"
-#  make -j$NUMCPU
-#  make install
+#  $MAKECMD -j$NUMCPU
+#  $MAKECMD install
 #}
 
 build_pkgconfig()
@@ -663,14 +688,15 @@ build_pkgconfig()
   cd "$BASEDIR"/src
   rm -rf "pkg-config-$version"
   if [ ! -f "pkg-config-$version.tar.gz" ]; then
+    echo downloading
     curl --insecure -LO "http://pkgconfig.freedesktop.org/releases/pkg-config-$version.tar.gz"
   fi
-  gzip -cd "pkg-config-$version.tar.gz" | tar xf -
+  gzip -cd "pkg-config-$version.tar.gz" | $TARCMD xf -
   cd "pkg-config-$version"
 
   ./configure --prefix="$DEPLOYDIR" --with-internal-glib
-  make -j$NUMCPU
-  make install
+  $MAKECMD -j$NUMCPU
+  $MAKECMD install
 }
 
 build_libffi()
@@ -685,10 +711,11 @@ build_libffi()
   cd "$BASEDIR"/src
   rm -rf "libffi-$version"
   if [ ! -f "libffi-$version.tar.gz" ]; then
+    echo downloading
     curl --insecure -LO "ftp://sourceware.org/pub/libffi/libffi-$version.tar.gz"
     curl --insecure -LO "http://www.linuxfromscratch.org/patches/blfs/svn/libffi-$version-includedir-1.patch"
   fi
-  gzip -cd "libffi-$version.tar.gz" | tar xf -
+  gzip -cd "libffi-$version.tar.gz" | $TARCMD xf -
   cd "libffi-$version"
   if [ ! "`command -v patch`" ]; then
     echo cannot proceed, need 'patch' program
@@ -696,8 +723,8 @@ build_libffi()
   fi
   patch -Np1 -i ../libffi-3.0.13-includedir-1.patch
   ./configure --prefix="$DEPLOYDIR"
-  make -j$NUMCPU
-  make install
+  $MAKECMD -j$NUMCPU
+  $MAKECMD install
 }
 
 #build_glib2()
@@ -714,14 +741,15 @@ build_libffi()
 #  cd "$BASEDIR"/src
 #  rm -rf "glib-$version"
 #  if [ ! -f "glib-$version.tar.xz" ]; then
+#    echo downloading
 #    curl --insecure -LO "http://ftp.gnome.org/pub/gnome/sources/glib/$maj_min_version/glib-$version.tar.xz"
 #  fi
 #  tar xJf "glib-$version.tar.xz"
 #  cd "glib-$version"
 
 #  ./configure --disable-gtk-doc --disable-man --prefix="$DEPLOYDIR" CFLAGS="-I$DEPLOYDIR/include" LDFLAGS="-L$DEPLOYDIR/lib"
-#  make -j$NUMCPU
-#  make install
+#  $MAKECMD -j$NUMCPU
+#  $MAKECMD install
 #}
 
 ## end of glib2 stuff
@@ -746,7 +774,9 @@ fi
 
 check_env
 
-. $OPENSCAD_SCRIPTDIR/setenv-unibuild.sh # '.' is equivalent to 'source'
+# note: many important variables can be set in setenv, like CC, CXX, and TARCMD
+# '.' is equivalent to 'source'
+. $OPENSCAD_SCRIPTDIR/setenv-unibuild.sh 
 . $OPENSCAD_SCRIPTDIR/common-build-dependencies.sh
 SRCDIR=$BASEDIR/src
 
@@ -776,19 +806,29 @@ if [ ! "`command -v bison`" ]; then
   build_bison 2.6.1
 fi
 
-# NB! For cmake, also update the actual download URL in the function
-if [ ! "`command -v cmake`" ]; then
-  build_cmake 2.8.8
+if [ "`uname | grep SunOS`" ]; then
+  if [ "`cmake --version | grep 'version 2'`" ]; then
+    build_cmake 3.3 3.3.2
+  elif [ "`cmake --version | grep 'version 3.2'`" ]; then
+    build_cmake 3.3 3.3.2
+  fi
 fi
-# see README for needed version (this should match 1<minimum)
-if [ "`cmake --version | grep 'version 2.[1-8][^0-9][1-4] '`" ]; then
-  build_cmake 2.8.8
+
+if [ ! "`command -v cmake`" ]; then
+  build_cmake 2.8 2.8.8
+elif [ "`cmake --version | grep 'version 2.[1-8][^0-9][1-4] '`" ]; then
+  # see README for needed version (this should match 1<minimum)
+  build_cmake 2.8 2.8.8
 fi
 
 # Singly build certain tools or libraries
 if [ $1 ]; then
   if [ $1 = "git" ]; then
     build_git 1.7.10.3
+    exit $?
+  fi
+  if [ $1 = "cmake" ]; then
+    build_cmake 3.3 3.3.2
     exit $?
   fi
   if [ $1 = "cgal" ]; then
@@ -846,16 +886,19 @@ fi
 # 
 # Some of these are defined in scripts/common-build-dependencies.sh
 
-build_eigen 3.2.2
 build_gmp 5.0.5
 build_mpfr 3.1.1
+build_eigen 3.2.2
 build_boost 1.56.0
+exit
 # NB! For CGAL, also update the actual download URL in the function
 build_cgal 4.4
 build_glew 1.9.0
 build_opencsg 1.3.2
 build_gettext 0.18.3.1
 build_glib2 2.38.2
+
+exit
 
 # the following are only needed for text()
 build_freetype 2.5.0.1 --without-png

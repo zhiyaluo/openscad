@@ -318,7 +318,6 @@ make_sysver()
 {
   make_sysver_tmp=
   binmake=$1/bin/make
-  if [ "`command -v gmake`" ]; then binmake=`which gmake`;fi
   if [ -x $1/bin/gmake ]; then binmake=$1/bin/gmake ;fi
   if [ ! -x $binmake ]; then return ;fi
   make_sysver_tmp=`$binmake --version 2>&1`
@@ -560,8 +559,11 @@ find_installed_version()
 
   # try to find/parse headers and/or binary output
   # break on the first match. (change the order to change precedence)
+  morepaths=
+  if [ "`uname | grep SunOS`" ]; then morepaths=/opt/csw ; fi
+  if [ "`uname | grep -i netbsd`" ]; then morepaths=/usr/pkg ; fi
   if [ ! $fsv_tmp ]; then
-    for syspath in $OPENSCAD_LIBRARIES "/usr/local" "/opt/local" "/usr/pkg" "/usr"; do
+    for syspath in $OPENSCAD_LIBRARIES "/usr/local" "/opt/local" "/usr" $morepaths; do
       if [ -e $syspath ]; then
         debug $depname"_sysver" $syspath
         eval $depname"_sysver" $syspath
