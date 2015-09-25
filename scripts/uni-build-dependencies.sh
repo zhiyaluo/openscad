@@ -493,6 +493,19 @@ build_glew()
   GLEW_DEST=$DEPLOYDIR $MAKER install
 }
 
+build_opencsg_makefile()
+{
+  # called from build_opencsg
+  cp Makefile Makefile.bak
+  cp src/Makefile src/Makefile.bak
+
+  cat Makefile.bak | sed s/example// | sed s/glew// > Makefile
+  cat src/Makefile.bak | grep -v ^INCPATH | grep -v ^LIBS > src/Makefile.bak2
+  echo "INCPATH = -I$BASEDIR/include -I../include -I.. -I$GLU_INCLUDE -I." > src/header
+  echo "LIBS = -L$BASEDIR/lib -L/usr/X11R6/lib -lGLU -lGL" >> src/header
+  cat src/header src/Makefile.bak2 > src/Makefile
+}
+
 build_opencsg()
 {
   if [ -e $DEPLOYDIR/lib/libopencsg.so ]; then
@@ -520,8 +533,16 @@ build_opencsg()
   if [ ! $detect_glu_result ]; then
     build_glu 9.0.0
   fi
+  echo GLU_INCLUDE $GLU_INCLUDE
 
-  if [ "`command -v qmake-qt4`" ]; then
+  if [ "`uname | grep SunOS`" ]; then
+    OPENCSG_QMAKE=make
+    cp Makefile Makefile.bak
+    cat Makefile.bak | sed s/"make -C"/make/g > Makefile
+    build_opencsg_makefile
+    tmp=$version
+    version=$tmp
+  elif [ "`command -v qmake-qt4`" ]; then
     OPENCSG_QMAKE=qmake-qt4
   elif [ "`command -v qmake4`" ]; then
     OPENCSG_QMAKE=qmake4
@@ -534,13 +555,7 @@ build_opencsg()
   else
     echo qmake not found... using standard OpenCSG makefiles
     OPENCSG_QMAKE=make
-    cp Makefile Makefile.bak
-    cp src/Makefile src/Makefile.bak
-
-    cat Makefile.bak | sed s/example// |sed s/glew// > Makefile
-    cat src/Makefile.bak | sed s@^INCPATH.*@INCPATH\ =\ -I$BASEDIR/include\ -I../include\ -I..\ -I$GLU_INCLUDE -I.@ > src/Makefile
-    cp src/Makefile src/Makefile.bak2
-    cat src/Makefile.bak2 | sed s@^LIBS.*@LIBS\ =\ -L$BASEDIR/lib\ -L/usr/X11R6/lib\ -lGLU\ -lGL@ > src/Makefile
+    build_opencsg_makefile
     tmp=$version
     version=$tmp
   fi
@@ -558,14 +573,19 @@ build_opencsg()
 
   make
 
+  INSTALLER=instal
+  if [ "`command -v ginstall`" ]; then
+   INSTALLER=ginstall # needed on SunOS
+  fi
+
   ls lib/* include/*
   if [ -e lib/.libs ]; then ls lib/.libs/*; fi # netbsd
   echo "installing to -->" $DEPLOYDIR
   mkdir -p $DEPLOYDIR/lib
   mkdir -p $DEPLOYDIR/include
-  install lib/* $DEPLOYDIR/lib
-  install include/* $DEPLOYDIR/include
-  if [ -e lib/.libs ]; then install lib/.libs/* $DEPLOYDIR/lib; fi #netbsd
+  $INSTALLER lib/* $DEPLOYDIR/lib
+  $INSTALLER include/* $DEPLOYDIR/include
+  if [ -e lib/.libs ]; then $INSTALLER lib/.libs/* $DEPLOYDIR/lib; fi #netbsd
 
   cd $BASEDIR
 }
