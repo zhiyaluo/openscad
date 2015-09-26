@@ -7,6 +7,10 @@
 # scripts/macosx-build-             - mac osx options
 # scripts/mingw-x-build-            - not used, MXE handles all dependencies.
 
+if [ ! $TARCMD ]; then
+  TARCMD=tar
+fi
+
 build_freetype()
 {
   version="$1"
@@ -23,7 +27,7 @@ build_freetype()
   if [ ! -f "freetype-$version.tar.gz" ]; then
     curl --insecure -LO "http://download.savannah.gnu.org/releases/freetype/freetype-$version.tar.gz"
   fi
-  tar xzf "freetype-$version.tar.gz"
+  gzip -cd "freetype-$version.tar.gz" | $TARCMD xf -
   cd "freetype-$version"
   ./configure --prefix="$DEPLOYDIR" $extra_config_flags
   make -j"$NUMCPU"
@@ -45,7 +49,7 @@ build_libxml2()
   if [ ! -f "libxml2-$version.tar.gz" ]; then
     curl --insecure -LO "ftp://xmlsoft.org/libxml2/libxml2-$version.tar.gz"
   fi
-  tar xzf "libxml2-$version.tar.gz"
+  gzip -cd "libxml2-$version.tar.gz" | $TARCMD xf - 
   cd "libxml2-$version"
   ./configure --prefix="$DEPLOYDIR" --without-ftp --without-http --without-python
   make -j$NUMCPU
@@ -68,7 +72,7 @@ build_fontconfig()
   if [ ! -f "fontconfig-$version.tar.gz" ]; then
     curl --insecure -LO "http://www.freedesktop.org/software/fontconfig/release/fontconfig-$version.tar.gz"
   fi
-  tar xzf "fontconfig-$version.tar.gz"
+  gzip -cd  "fontconfig-$version.tar.gz" | $TARCMD xf -
   cd "fontconfig-$version"
   export PKG_CONFIG_PATH="$DEPLOYDIR/lib/pkgconfig"
   ./configure --prefix=/ --enable-libxml2 --disable-docs $extra_config_flags
@@ -92,7 +96,7 @@ build_libffi()
   if [ ! -f "libffi-$version.tar.gz" ]; then
     curl --insecure -LO "ftp://sourceware.org/pub/libffi/libffi-$version.tar.gz"
   fi
-  tar xzf "libffi-$version.tar.gz"
+  gzip -cd "libffi-$version.tar.gz" | $TARCMD xf -
   cd "libffi-$version"
   ./configure --prefix="$DEPLOYDIR"
   make -j$NUMCPU
@@ -114,7 +118,7 @@ build_gettext()
   if [ ! -f "gettext-$version.tar.gz" ]; then
     curl --insecure -LO "http://ftpmirror.gnu.org/gettext/gettext-$version.tar.gz"
   fi
-  tar xzf "gettext-$version.tar.gz"
+  gzip -cd "gettext-$version.tar.gz" | $TARCMD xf -
   cd "gettext-$version"
 
   ./configure --prefix="$DEPLOYDIR" --disable-java --disable-native-java
@@ -138,7 +142,7 @@ build_glib2()
   if [ ! -f "glib-$version.tar.xz" ]; then
     curl --insecure -LO "http://ftp.gnome.org/pub/gnome/sources/glib/$maj_min_version/glib-$version.tar.xz"
   fi
-  tar xJf "glib-$version.tar.xz"
+  xz -cd "glib-$version.tar.xz" | $TARCMD xf -
   cd "glib-$version"
 
   export PKG_CONFIG_PATH="$DEPLOYDIR/lib/pkgconfig"
@@ -163,7 +167,7 @@ build_ragel()
   if [ ! -f "ragel-$version.tar.gz" ]; then
     curl --insecure -LO "http://www.colm.net/files/ragel/ragel-$version.tar.gz"
   fi
-  tar xzf "ragel-$version.tar.gz"
+  gzip -cd  "ragel-$version.tar.gz" | $TARCMD xf -
   cd "ragel-$version"
   sed -e "s/setiosflags(ios::right)/std::&/g" ragel/javacodegen.cpp > ragel/javacodegen.cpp.new && mv ragel/javacodegen.cpp.new ragel/javacodegen.cpp
   ./configure --prefix="$DEPLOYDIR"
@@ -187,7 +191,7 @@ build_harfbuzz()
   if [ ! -f "harfbuzz-$version.tar.gz" ]; then
     curl --insecure -LO "http://cgit.freedesktop.org/harfbuzz/snapshot/harfbuzz-$version.tar.gz"
   fi
-  tar xzf "harfbuzz-$version.tar.gz"
+  gzip -cd "harfbuzz-$version.tar.gz" | $TARCMD-xf -
   cd "harfbuzz-$version"
   # disable doc directories as they make problems on Mac OS Build
   sed -e "s/SUBDIRS = src util test docs/SUBDIRS = src util test/g" Makefile.am > Makefile.am.bak && mv Makefile.am.bak Makefile.am

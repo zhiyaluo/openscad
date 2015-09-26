@@ -108,24 +108,30 @@ setenv_netbsd_clang()
 
 setenv_sunos()
 {
- # SunOS compiler is weird.
+ # we need opencsw.
+ # see http://www.opencsw.org/manual/for-developers/index.html
  CC='gcc -m64'
  CXX='g++ -m64'
  PKG_CONFIG_PATH=$PKG_CONFIG_PATH:/usr/lib/pkgconfig
  TARCMD=gtar
  MAKECMD=gmake
+ CSWBIN=/opt/csw/sparc-sun-solaris2.10/bin/
+ PATH=$CSWBIN:$PATH
 
  export PKG_CONFIG_PATH
  export CC
  export CXX
  export TARCMD
  export MAKECMD
+ #export CSWBIN
+ export PATH
 
  echo CC has been modified: $CC
  echo CXX has been modified: $CXX
  echo PKG_CONFIG_PATH modified: $PKG_CONFIG_PATH
  echo TARCMD has been modified: $TARCMD
  echo MAKECMD has been modified: $MAKECMD
+ echo PATH has been modified w $CSWBIN
 }
 
 clean_note()

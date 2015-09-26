@@ -500,8 +500,8 @@ build_glew()
   cd glew-$version
   mkdir -p $DEPLOYDIR/lib/pkgconfig
 
-  # Glew's makefile is not built for Linux Multiarch. We aren't trying
-  # to fix everything here, just the test machines OScad normally runs on
+  # Fix Glew's static Makefiles to work with our --prefix style install
+  TMP=oscadtmp
 
   # Fedora 64-bit
   if [ "`uname -m | grep 64`" ]; then
@@ -519,21 +519,23 @@ build_glew()
 
   # custom CC settings, like clang linux
   if [ "`echo $CC`" ]; then
-    cat config/Makefile.linux | sed  s/"CC = cc"/"# CC = cc"/ > tmp
-    mv tmp config/Makefile.linux
+    cat config/Makefile.linux | sed  s/"CC = cc"/"# CC = cc"/ > $TMP
+    cp $TMP config/Makefile.linux
   fi
 
   if [ "`uname | grep SunOS`" ]; then
-    cat config/Makefile.solaris | sed  s/"CC = cc"/"# CC = cc"/ > tmp
-    mv tmp config/Makefile.solaris
-    cat config/Makefile.solaris | sed  s/"-Kpic"/""/ > tmp
-    mv tmp config/Makefile.solaris
-    cat config/Makefile.solaris | sed  s/"LD = ld"/"LD = gld "/ > tmp
-    mv tmp config/Makefile.solaris
-    cat config/Makefile.solaris | sed  s/"-lX11"/"-lX11 -lc"/ > tmp
-    mv tmp config/Makefile.solaris
-    cat config/Makefile.solaris | sed  s/"POPT ="/"#POPT ="/ > tmp
-    mv tmp config/Makefile.solaris
+    cat config/Makefile.solaris | sed  s/"CC = cc"/"CC = gcc -m32"/ > $TMP
+    mv $TMP config/Makefile.solaris
+    cat config/Makefile.solaris | sed  s/"-Kpic"/""/ > $TMP
+    cp $TMP config/Makefile.solaris
+    cat config/Makefile.solaris | sed  s/"LD = ld"/"LD = gld "/ > $TMP
+    cp $TMP config/Makefile.solaris
+    cat config/Makefile.solaris | sed  s/"-lX11"/"-lX11 -ldl "/ > $TMP
+    cp $TMP config/Makefile.solaris
+#    cat config/Makefile.solaris | sed  s/"LDFLAGS.SO = -G"/"LDFLAGS.SO = -G -L\/opt\/csw\/lib\/64 -R\/opt\/csw\/lib\/64"/ > $TMP
+    cp $TMP config/Makefile.solaris
+    cat config/Makefile.solaris | sed  s/"POPT ="/"#POPT ="/ > $TMP
+    cp $TMP config/Makefile.solaris
     MAKEFLAGS='INSTALL=ginstall STRIP=gstrip AR=gar'    
   fi
 
@@ -935,9 +937,9 @@ build_boost 1.56.0
 # NB! For CGAL, also update the actual download URL in the function
 build_cgal 4.4
 build_glew 1.13.0
-exit
 build_opencsg 1.3.2
 build_gettext 0.18.3.1
+exit
 build_glib2 2.38.2
 
 exit
