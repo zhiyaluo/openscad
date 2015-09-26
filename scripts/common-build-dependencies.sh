@@ -34,8 +34,8 @@ build_freetype()
   fi
   gzip -cd "freetype-$version.tar.gz" | $TARCMD xf -
   cd "freetype-$version"
-  ./configure --prefix="$DEPLOYDIR" $extra_config_flags
-  $MAKECMD VERBOSE=1 -j"$NUMCPU"
+  ./configure --disable-silent-rules --prefix="$DEPLOYDIR" $extra_config_flags
+  $MAKECMD -j"$NUMCPU"
   $MAKECMD install
 }
  
@@ -56,9 +56,12 @@ build_libxml2()
   fi
   gzip -cd "libxml2-$version.tar.gz" | $TARCMD xf - 
   cd "libxml2-$version"
-  ./configure --prefix="$DEPLOYDIR" --without-ftp --without-http --without-python --with-zlib=/opt/csw
-  $MAKECMD VERBOSE=1 -j$NUMCPU
-  $MAKECMD VERBOSE=1 install
+  if [ "`uname | grep SunOS`" ]; then
+    OTHERFLAGS='--with-zlib=/opt/csw'
+  fi
+  ./configure --disable-silent-rules --prefix="$DEPLOYDIR" --without-ftp --without-http --without-python $OTHERFLAGS
+  $MAKECMD -j$NUMCPU
+  $MAKECMD install
 }
 
 build_fontconfig()
@@ -80,10 +83,10 @@ build_fontconfig()
   gzip -cd  "fontconfig-$version.tar.gz" | $TARCMD xf -
   cd "fontconfig-$version"
   export PKG_CONFIG_PATH="$DEPLOYDIR/lib/pkgconfig"
-  ./configure --prefix=/ --enable-libxml2 --disable-docs $extra_config_flags
+  ./configure --disable-silent-rules --prefix=/ --enable-libxml2 --disable-docs $extra_config_flags
   unset PKG_CONFIG_PATH
-  DESTDIR="$DEPLOYDIR" $MAKECMD VERBOSE=1 -j$NUMCPU
-  DESTDIR="$DEPLOYDIR" $MAKECMD VERBOSE=1 install
+  DESTDIR="$DEPLOYDIR" $MAKECMD -j$NUMCPU
+  DESTDIR="$DEPLOYDIR" $MAKECMD install
 }
 
 build_libffi()
@@ -103,8 +106,8 @@ build_libffi()
   fi
   gzip -cd "libffi-$version.tar.gz" | $TARCMD xf -
   cd "libffi-$version"
-  ./configure --prefix="$DEPLOYDIR"
-  $MAKECMD VERBOSE=1 -j$NUMCPU
+  ./configure --disable-silent-rules --prefix="$DEPLOYDIR"
+  $MAKECMD -j$NUMCPU
   $MAKECMD install
 }
 
@@ -126,8 +129,8 @@ build_gettext()
   gzip -cd "gettext-$version.tar.gz" | $TARCMD xf -
   cd "gettext-$version"
 
-  ./configure --prefix="$DEPLOYDIR" --disable-java --disable-native-java
-  $MAKECMD VERBOSE=1 -j$NUMCPU
+  ./configure --disable-silent-rules --prefix="$DEPLOYDIR" --disable-java --disable-native-java
+  $MAKECMD -j$NUMCPU
   $MAKECMD install
 }
 
@@ -156,9 +159,9 @@ build_glib2()
   fi
 
   export PKG_CONFIG_PATH="$DEPLOYDIR/lib/pkgconfig"
-  ./configure --disable-gtk-doc --disable-man --prefix="$DEPLOYDIR" CFLAGS="-I$DEPLOYDIR/include" LDFLAGS="-L$DEPLOYDIR/lib" $OTHERFLAGS 
+  ./configure --disable-silent-rules --disable-gtk-doc --disable-man --prefix="$DEPLOYDIR" CFLAGS="-I$DEPLOYDIR/include" LDFLAGS="-L$DEPLOYDIR/lib" $OTHERFLAGS 
   unset PKG_CONFIG_PATH
-  $MAKECMD VERBOSE=1 -j$NUMCPU
+  $MAKECMD -j$NUMCPU
   $MAKECMD install
 }
 
@@ -180,9 +183,9 @@ build_ragel()
   gzip -cd  "ragel-$version.tar.gz" | $TARCMD xf -
   cd "ragel-$version"
   sed -e "s/setiosflags(ios::right)/std::&/g" ragel/javacodegen.cpp > ragel/javacodegen.cpp.new && mv ragel/javacodegen.cpp.new ragel/javacodegen.cpp
-  ./configure --prefix="$DEPLOYDIR"
-  $MAKECMD VERBOSE=1 -j$NUMCPU
-  $MAKECMD VERBOSE=1 install
+  ./configure --disable-silent-rules --prefix="$DEPLOYDIR"
+  $MAKECMD -j$NUMCPU
+  $MAKECMD install
 }
 
 build_harfbuzz()
@@ -207,7 +210,7 @@ build_harfbuzz()
   sed -e "s/SUBDIRS = src util test docs/SUBDIRS = src util test/g" Makefile.am > Makefile.am.bak && mv Makefile.am.bak Makefile.am
   sed -e "s/^docs.*$//" configure.ac > configure.ac.bak && mv configure.ac.bak configure.ac
   ./autogen.sh --prefix="$DEPLOYDIR" --with-freetype=yes --with-gobject=no --with-cairo=no --with-icu=no $extra_config_flags
-  $MAKECMD VERBOSE=1 -j$NUMCPU
+  $MAKECMD -j$NUMCPU
   $MAKECMD install
 }
 
@@ -228,8 +231,8 @@ build_binutils()
   fi
   gzip -cd "binutils-$version.tar.gz" | $TARCMD xf -
   cd "binutils-$version"
-  ./configure --prefix="$DEPLOYDIR"
-  $MAKECMD VERBOSE=1 -j$NUMCPU
-  $MAKECMD VERBOSE=1 install
+  ./configure --disable-silent-rules --prefix="$DEPLOYDIR"
+  $MAKECMD -j$NUMCPU
+  $MAKECMD install
 }
 
