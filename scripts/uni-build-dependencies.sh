@@ -693,33 +693,6 @@ build_eigen()
   #  $MAKECMD install
 }
 
-
-# glib2 and dependencies
-
-#build_gettext()
-#{
-#  version=$1
-#  ls -l $DEPLOYDIR/include/gettext-po.h
-#  if [ -e $DEPLOYDIR/include/gettext-po.h ]; then
-#    echo "gettext already installed. not building"
-#    return
-#  fi
-#
-#  echo "Building gettext $version..."
-#
-#  cd "$BASEDIR"/src
-#  rm -rf "gettext-$version"
-#  if [ ! -f "glib-$version.tar.gz" ]; then
-#    curl --insecure -LO "http://ftpmirror.gnu.org/gettext/gettext-$version.tar.gz"
-#  fi
-#  tar xzf "gettext-$version.tar.gz"
-#  cd "gettext-$version"
-#
-#  ./configure --prefix="$DEPLOYDIR"
-#  $MAKECMD -j$NUMCPU
-#  $MAKECMD install
-#}
-
 build_pkgconfig()
 {
   if [ "`command -v pkg-config`" ]; then
