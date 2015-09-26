@@ -126,7 +126,7 @@ build_qt4()
   fi
   echo "Building Qt" $version "..."
   cd $BASEDIR/src
-  rm -rf qt-everywhere-opensource-src-$version
+  rm -rf ./qt-everywhere-opensource-src-$version
   if [ ! -f qt-everywhere-opensource-src-$version.tar.gz ]; then
     echo downloading
     curl -O http://releases.qt-project.org/qt4/source/qt-everywhere-opensource-src-$version.tar.gz
@@ -154,7 +154,7 @@ build_qt5()
 
   echo "Building Qt" $version "..."
   cd $BASEDIR/src
-  rm -rf qt-everywhere-opensource-src-$version
+  rm -rf ./qt-everywhere-opensource-src-$version
   v=`echo "$version" | sed -e 's/\.[0-9]$//'`
   if [ ! -f qt-everywhere-opensource-src-$version.tar.gz ]; then
      echo downloading
@@ -200,7 +200,7 @@ build_bison()
   version=$1
   echo "Building bison" $version
   cd $BASEDIR/src
-  rm -rf bison-$version
+  rm -rf ./bison-$version
   if [ ! -f bison-$version.tar.gz ]; then
     echo downloading
     curl --insecure -O http://ftp.gnu.org/gnu/bison/bison-$version.tar.gz
@@ -217,7 +217,7 @@ build_git()
   version=$1
   echo "Building git" $version "..."
   cd $BASEDIR/src
-  rm -rf git-$version
+  rm -rf ./git-$version
   if [ ! -f git-$version.tar.gz ]; then
     echo downloading
     curl --insecure -O http://git-core.googlecode.com/files/git-$version.tar.gz
@@ -254,7 +254,7 @@ build_curl()
   version=$1
   echo "Building curl" $version "..."
   cd $BASEDIR/src
-  rm -rf curl-$version
+  rm -rf ./curl-$version
   if [ ! -f curl-$version.tar.bz2 ]; then
     echo downloading
     wget http://curl.haxx.se/download/curl-$version.tar.bz2
@@ -277,7 +277,7 @@ build_gmp()
   fi
   echo "Building gmp" $version "..."
   cd $BASEDIR/src
-  rm -rf gmp-$version
+  rm -rf ./gmp-$version
   if [ ! -f gmp-$version.tar.bz2 ]; then
     echo downloading
     curl --insecure -O https://gmplib.org/download/gmp/gmp-$version.tar.bz2
@@ -300,7 +300,7 @@ build_mpfr()
   fi
   echo "Building mpfr" $version "..."
   cd $BASEDIR/src
-  rm -rf mpfr-$version
+  rm -rf ./mpfr-$version
   if [ ! -f mpfr-$version.tar.bz2 ]; then
     echo downloading
     curl --insecure -O http://www.mpfr.org/mpfr-$version/mpfr-$version.tar.bz2
@@ -325,7 +325,7 @@ build_boost()
   bversion=`echo $version | tr "." "_"`
   echo "Building boost" $version "..."
   cd $BASEDIR/src
-  rm -rf boost_$bversion
+  rm -rf ./boost_$bversion
   if [ ! -f boost_$bversion.tar.bz2 ]; then
     echo downloading
     curl --insecure -LO http://downloads.sourceforge.net/project/boost/boost/$version/boost_$bversion.tar.bz2
@@ -342,6 +342,14 @@ build_boost()
       exit
     fi
   fi
+
+  # sparc cpu needs the m64/m32 thing
+  if [ "`echo $CC | grep m64`" ]; then
+    BJAMOPTIONS='cxxflags=-m64 linkflags=-m64 -d+2'
+  else
+    BJAMOPTIONS='-d+2'
+  fi
+
   # We only need certain portions of boost
   if [ -e ./bootstrap.sh ]; then
     BSTRAPBIN=./bootstrap.sh
@@ -349,8 +357,10 @@ build_boost()
     BSTRAPBIN=./configure
   fi
   $BSTRAPBIN --prefix=$DEPLOYDIR --with-libraries=thread,program_options,filesystem,system,regex
-	if [ -e ./b2 ]; then
-    BJAMBIN=./b2;
+
+  # Boost build changed over time, make -> bjam -> b2
+  if [ -e ./b2 ]; then
+    BJAMBIN=./b2
   elif [ -e ./bjam ]; then
     BJAMBIN=./bjam
   elif [ -e ./Makefile ]; then
@@ -364,7 +374,7 @@ build_boost()
     $BJAMBIN -j$NUMCPU
   fi
   if [ $? = 0 ]; then
-    $BJAMBIN install
+    $BJAMBIN $BJAMOPTIONS install
   else
     echo boost build failed
     exit 1
@@ -386,7 +396,7 @@ build_cgal()
   version=$1
   echo "Building CGAL" $version "..."
   cd $BASEDIR/src
-  #rm -rf CGAL-$version
+  rm -rf ./CGAL-$version
   ver4_4="curl --insecure -O https://gforge.inria.fr/frs/download.php/file/33524/CGAL-4.4.tar.bz2"
   ver4_2="curl --insecure -O https://gforge.inria.fr/frs/download.php/32360/CGAL-4.2.tar.bz2"
   ver4_1="curl --insecure -O https://gforge.inria.fr/frs/download.php/31640/CGAL-4.1.tar.bz2"
@@ -410,22 +420,24 @@ build_cgal()
 
   zipper=gzip
   suffix=gz
-  tarer=tar
   if [ -e CGAL-$version.tar.bz2 ]; then
     zipper=bzip2
     suffix=bz2
   fi
-  if [ "`uname | grep SunOS`" ]; then
-    tarrer=gtar
-  fi
 
-  #$zipper -cd CGAL-$version.tar.$suffix | $tarrer xf -
+  $zipper -cd CGAL-$version.tar.$suffix | $TARCMD xf -
   cd CGAL-$version
 
   # older cmakes have buggy FindBoost that can result in
   # finding the system libraries but OPENSCAD_LIBRARIES include paths
   FINDBOOST_CMAKE=$OPENSCAD_SCRIPTDIR/../tests/FindBoost.cmake
   cp $FINDBOOST_CMAKE ./cmake/modules/
+
+  if [ "`uname | grep SunOS`" ]; then
+    # workaround create_subdirectory cmake bug
+    cat src/CMakeLists.txt | sed s/"\\/\\/CMakeLists.txt"/"\\/CMakeLists.txt"/  > .tmp 
+    cat .tmp > src/CMakeLists.txt
+  fi
 
   mkdir bin
   cd bin
@@ -436,41 +448,50 @@ build_cgal()
     CGAL_BUILDTYPE="Debug"
   fi
 
-  if [ "`uname | grep SunOS`" ]; then
-    export CC=gcc
-    export CXX=g++
-  else
-    ENVARS=''
+  if [ "`echo $CC | grep ..m64 `" ]; then
+    COMPILER='-DCMAKE_CXX_FLAGS=-m64 -DCMAKE_C_FLAGS=-m64'
   fi
 
+  BUILD=`echo -DCMAKE_BUILD_TYPE=$CGAL_BUILDTYPE -Wno-dev `
+  PREFIX=`echo -DCMAKE_INSTALL_PREFIX=$DEPLOYDIR `
+  CGALEXTRAS=`echo -DWITH_CGAL_Qt3=OFF -DWITH_CGAL_Qt4=OFF -DWITH_CGAL_ImageIO=OFF -DWITH_examples=OFF -DWITH_demos=OFF `
+  GMPMPFRBOOST=`echo -DGMP_INCLUDE_DIR=$DEPLOYDIR/include -DGMP_LIBRARIES=$DEPLOYDIR/lib/libgmp.so -DGMPXX_LIBRARIES=$DEPLOYDIR/lib/libgmpxx.so -DGMPXX_INCLUDE_DIR=$DEPLOYDIR/include -DMPFR_INCLUDE_DIR=$DEPLOYDIR/include -DMPFR_LIBRARIES=$DEPLOYDIR/lib/libmpfr.so $CGALEXTRAS -DBOOST_LIBRARYDIR=$DEPLOYDIR/lib -DBOOST_INCLUDEDIR=$DEPLOYDIR/include -DBoost_NO_SYSTEM_PATHS=1 `
   DEBUGBOOSTFIND=0 # for debugging FindBoost.cmake (not for debugging boost)
   Boost_NO_SYSTEM_PATHS=1
+
   if [ "`echo $2 | grep use-sys-libs`" ]; then
-    cmake -DCMAKE_INSTALL_PREFIX=$DEPLOYDIR -DWITH_CGAL_Qt3=OFF -DWITH_CGAL_Qt4=OFF -DWITH_CGAL_ImageIO=OFF -DCMAKE_BUILD_TYPE=$CGAL_BUILDTYPE -DBoost_DEBUG=$DEBUGBOOSTFIND ..
+    echo cmake $PREFIX $CGALEXTRAS $BUILD -DBoost_DEBUG=$DEBUGBOOSTFIND $COMPILER ..
+    cmake $PREFIX $CGALEXTRAS $BUILD -DBoost_DEBUG=$DEBUGBOOSTFIND $COMPILER ..
   else
-    cmake -DCMAKE_INSTALL_PREFIX=$DEPLOYDIR -DGMP_INCLUDE_DIR=$DEPLOYDIR/include -DGMP_LIBRARIES=$DEPLOYDIR/lib/libgmp.so -DGMPXX_LIBRARIES=$DEPLOYDIR/lib/libgmpxx.so -DGMPXX_INCLUDE_DIR=$DEPLOYDIR/include -DMPFR_INCLUDE_DIR=$DEPLOYDIR/include -DMPFR_LIBRARIES=$DEPLOYDIR/lib/libmpfr.so -DWITH_CGAL_Qt3=OFF -DWITH_CGAL_Qt4=OFF -DWITH_CGAL_ImageIO=OFF -DBOOST_LIBRARYDIR=$DEPLOYDIR/lib -DBOOST_INCLUDEDIR=$DEPLOYDIR/include -DCMAKE_BUILD_TYPE=$CGAL_BUILDTYPE -DBoost_DEBUG=$DEBUGBOOSTFIND -DBoost_NO_SYSTEM_PATHS=1 ..
+    echo cmake $PREFIX $CGALEXTRAS $BUILD $GMPMPFRBOOST -DBoost_DEBUG=$DEBUGBOOSTFIND $COMPILER ..
+    cmake $PREFIX $CGALEXTRAS $BUILD $GMPMPFRBOOST -DBoost_DEBUG=$DEBUGBOOSTFIND $COMPILER ..
   fi
-  $MAKECMD -j$NUMCPU
+  $MAKECMD -j$NUMCPU VERBOSE=1
   $MAKECMD install
+}
+
+check_glew()
+{
+  check_glew_result=
+  if [ -e $DEPLOYDIR/lib64/libGLEW.so ]; then
+    check_glew_result=1
+  fi
+  if [ -e $DEPLOYDIR/lib/libGLEW.so ]; then
+    check_glew_result=1
+  fi
 }
 
 build_glew()
 {
-  GLEW_INSTALLED=
-  if [ -e $DEPLOYDIR/lib64/libGLEW.so ]; then
-    GLEW_INSTALLED=1
-  fi
-  if [ -e $DEPLOYDIR/lib/libGLEW.so ]; then
-    GLEW_INSTALLED=1
-  fi
-  if [ $GLEW_INSTALLED ]; then
+  check_glew
+  if [ $check_glew_result ]; then
     echo "glew already installed. not building"
     return
   fi
   version=$1
   echo "Building GLEW" $version "..."
   cd $BASEDIR/src
-  rm -rf glew-$version
+  rm -rf ./glew-$version
   if [ ! -f glew-$version.tgz ]; then
     echo downloading
     curl --insecure -LO http://downloads.sourceforge.net/project/glew/glew/$version/glew-$version.tgz
@@ -496,9 +517,24 @@ build_glew()
     fi
   fi
 
-  # clang linux
-  if [ $CC ]; then
-    sed -ibak s/"CC = cc"/"# CC = cc"/ config/Makefile.linux
+  # custom CC settings, like clang linux
+  if [ "`echo $CC`" ]; then
+    cat config/Makefile.linux | sed  s/"CC = cc"/"# CC = cc"/ > tmp
+    mv tmp config/Makefile.linux
+  fi
+
+  if [ "`uname | grep SunOS`" ]; then
+    cat config/Makefile.solaris | sed  s/"CC = cc"/"# CC = cc"/ > tmp
+    mv tmp config/Makefile.solaris
+    cat config/Makefile.solaris | sed  s/"-Kpic"/""/ > tmp
+    mv tmp config/Makefile.solaris
+    cat config/Makefile.solaris | sed  s/"LD = ld"/"LD = gld "/ > tmp
+    mv tmp config/Makefile.solaris
+    cat config/Makefile.solaris | sed  s/"-lX11"/"-lX11 -lc"/ > tmp
+    mv tmp config/Makefile.solaris
+    cat config/Makefile.solaris | sed  s/"POPT ="/"#POPT ="/ > tmp
+    mv tmp config/Makefile.solaris
+    MAKEFLAGS='INSTALL=ginstall STRIP=gstrip AR=gar'    
   fi
 
   if [ "`uname | grep BSD`" ]; then
@@ -510,8 +546,14 @@ build_glew()
     fi
   fi
 
-  GLEW_DEST=$DEPLOYDIR $MAKECMD -j$NUMCPU
-  GLEW_DEST=$DEPLOYDIR $MAKECMD install
+  GLEW_DEST=$DEPLOYDIR $MAKECMD $MAKEFLAGS -j$NUMCPU
+  GLEW_DEST=$DEPLOYDIR $MAKECMD $MAKEFLAGS install
+  if [ $GLEW_INSTALLED ]; then
+    echo glew installed to $DEPLOYDIR
+  else
+    exit
+    echo glew install failed
+  fi
 }
 
 build_opencsg_makefile()
@@ -520,7 +562,7 @@ build_opencsg_makefile()
   cp Makefile Makefile.bak
   cp src/Makefile src/Makefile.bak
 
-  cat Makefile.bak | sed s/example// | sed s/glew// > Makefile
+  cat Makefile.bak | sed s/example// | sed s/glew// | sed s/make/$MAKECMD/ > Makefile
   cat src/Makefile.bak | grep -v ^INCPATH | grep -v ^LIBS > src/Makefile.bak2
   echo "INCPATH = -I$BASEDIR/include -I../include -I.. -I$GLU_INCLUDE -I." > src/header
   echo "LIBS = -L$BASEDIR/lib -L/usr/X11R6/lib -lGLU -lGL" >> src/header
@@ -536,7 +578,7 @@ build_opencsg()
   version=$1
   echo "Building OpenCSG" $version "..."
   cd $BASEDIR/src
-  rm -rf OpenCSG-$version
+  rm -rf ./OpenCSG-$version
   if [ ! -f OpenCSG-$version.tar.gz ]; then
     echo downloading
     curl --insecure -O http://www.opencsg.org/OpenCSG-$version.tar.gz
@@ -558,7 +600,7 @@ build_opencsg()
   echo GLU_INCLUDE $GLU_INCLUDE
 
   if [ "`uname | grep SunOS`" ]; then
-    OPENCSG_QMAKE=$MAKECMD
+    OPENCSG_QMAKE='echo none'
     build_opencsg_makefile
     tmp=$version
     version=$tmp
@@ -574,13 +616,13 @@ build_opencsg()
     OPENCSG_QMAKE=qmake
   else
     echo qmake not found... using standard OpenCSG makefiles
-    OPENCSG_QMAKE=$MAKECMD
+    OPENCSG_QMAKE='echo none'
     build_opencsg_makefile
     tmp=$version
     version=$tmp
   fi
 
-  if [ ! $OPENCSG_QMAKE = "make" ]; then
+  if [ "` echo $OPENCSG_QMAKE | grep none`" ]; then
     OPENCSG_QMAKE=$OPENCSG_QMAKE' "QMAKE_CXXFLAGS+=-I'$GLU_INCLUDE'"'
   fi
   echo OPENCSG_QMAKE: $OPENCSG_QMAKE
@@ -591,9 +633,9 @@ build_opencsg()
   cd $BASEDIR/src/OpenCSG-$version
   $OPENCSG_QMAKE
 
-  make
+  $MAKECMD
 
-  INSTALLER=instal
+  INSTALLER=install
   if [ "`uname | grep SunOS`" ]; then
    INSTALLER=ginstall
   fi
@@ -621,7 +663,7 @@ build_eigen()
   fi
   echo "Building eigen" $version "..."
   cd $BASEDIR/src
-  rm -rf eigen-$version
+  rm -rf ./eigen-$version
   EIGENDIR="none"
   if [ $version = "3.2.2" ]; then EIGENDIR=eigen-eigen-1306d75b4a21; fi
   if [ $version = "3.1.1" ]; then EIGENDIR=eigen-eigen-43d9075b23ef; fi
@@ -686,7 +728,7 @@ build_pkgconfig()
   echo "Building pkg-config $version..."
 
   cd "$BASEDIR"/src
-  rm -rf "pkg-config-$version"
+  rm -rf ./pkg-config-$version
   if [ ! -f "pkg-config-$version.tar.gz" ]; then
     echo downloading
     curl --insecure -LO "http://pkgconfig.freedesktop.org/releases/pkg-config-$version.tar.gz"
@@ -709,7 +751,7 @@ build_libffi()
   echo "Building libffi $version..."
 
   cd "$BASEDIR"/src
-  rm -rf "libffi-$version"
+  rm -rf ./libffi-$version
   if [ ! -f "libffi-$version.tar.gz" ]; then
     echo downloading
     curl --insecure -LO "ftp://sourceware.org/pub/libffi/libffi-$version.tar.gz"
@@ -739,7 +781,7 @@ build_libffi()
 #
 # echo "Building glib2 $version..."
 #  cd "$BASEDIR"/src
-#  rm -rf "glib-$version"
+#  rm -rf ./"glib-$version"
 #  if [ ! -f "glib-$version.tar.xz" ]; then
 #    echo downloading
 #    curl --insecure -LO "http://ftp.gnome.org/pub/gnome/sources/glib/$maj_min_version/glib-$version.tar.xz"
@@ -890,10 +932,10 @@ build_gmp 5.0.5
 build_mpfr 3.1.1
 build_eigen 3.2.2
 build_boost 1.56.0
-exit
 # NB! For CGAL, also update the actual download URL in the function
 build_cgal 4.4
-build_glew 1.9.0
+build_glew 1.13.0
+exit
 build_opencsg 1.3.2
 build_gettext 0.18.3.1
 build_glib2 2.38.2
