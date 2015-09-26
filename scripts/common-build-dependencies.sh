@@ -151,7 +151,7 @@ build_glib2()
   cd "glib-$version"
 
   if [ "`uname | grep SunOS`" ]; then
-    OTHERFLAGS='--disable-dtrace --disable-gio'
+    OTHERFLAGS=--disable-dtrace
     CFLAGS=-D_GNU_SOURCE
   fi
 

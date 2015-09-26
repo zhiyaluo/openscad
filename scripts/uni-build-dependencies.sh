@@ -943,12 +943,12 @@ build_cgal 4.4
 build_glew 1.13.0
 build_opencsg 1.3.2
 build_gettext 0.18.3.1
-build_glib2 2.38.2
-exit
+build_glib2 2.46.0
 
 # the following are only needed for text()
 build_freetype 2.5.0.1 --without-png
 build_libxml2 2.9.1
+exit
 build_fontconfig 2.11.0 --with-add-fonts=/usr/X11R6/lib/X11/fonts,/usr/local/share/fonts
 build_ragel 6.9
 build_harfbuzz 0.9.23 --with-glib=yes
