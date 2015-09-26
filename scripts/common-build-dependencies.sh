@@ -200,3 +200,26 @@ build_harfbuzz()
   make -j$NUMCPU
   make install
 }
+
+build_binutils()
+{
+  version=$1
+
+  if [ -e $DEPLOYDIR/bin/ar ]; then
+    echo "binutils already installed. not building"
+    return
+  fi
+
+  echo "Building binutils $version..."
+  cd "$BASEDIR"/src
+  rm -rf "binutils-$version"
+  if [ ! -f "binutils-$version.tar.gz" ]; then
+    curl --insecure -LO http://ftp.gnu.org/gnu/binutils/binutils-$version.tar.gz
+  fi
+  gzip -cd "binutils-$version.tar.gz" | $TARCMD xf -
+  cd "binutils-$version"
+  ./configure --prefix="$DEPLOYDIR"
+  make -j$NUMCPU
+  make install
+}
+

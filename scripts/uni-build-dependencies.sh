@@ -879,6 +879,10 @@ if [ $1 ]; then
     build_cgal 4.4 use-sys-libs
     exit $?
   fi
+  if [ $1 = "binutils" ]; then
+    build_binutils 2.25
+    exit $?
+  fi
   if [ $1 = "opencsg" ]; then
     build_opencsg 1.3.2
     exit $?
