@@ -943,9 +943,7 @@ build_cgal 4.4
 build_glew 1.13.0
 build_opencsg 1.3.2
 build_gettext 0.18.3.1
-exit
 build_glib2 2.38.2
-
 exit
 
 # the following are only needed for text()
