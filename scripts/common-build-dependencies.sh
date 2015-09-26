@@ -35,7 +35,7 @@ build_freetype()
   gzip -cd "freetype-$version.tar.gz" | $TARCMD xf -
   cd "freetype-$version"
   ./configure --prefix="$DEPLOYDIR" $extra_config_flags
-  $MAKECMD -j"$NUMCPU"
+  $MAKECMD VERBOSE=1 -j"$NUMCPU"
   $MAKECMD install
 }
  
@@ -56,9 +56,9 @@ build_libxml2()
   fi
   gzip -cd "libxml2-$version.tar.gz" | $TARCMD xf - 
   cd "libxml2-$version"
-  ./configure --prefix="$DEPLOYDIR" --without-ftp --without-http --without-python
-  $MAKECMD -j$NUMCPU
-  $MAKECMD install
+  ./configure --prefix="$DEPLOYDIR" --without-ftp --without-http --without-python --with-zlib=/opt/csw
+  $MAKECMD VERBOSE=1 -j$NUMCPU
+  $MAKECMD VERBOSE=1 install
 }
 
 build_fontconfig()
@@ -82,8 +82,8 @@ build_fontconfig()
   export PKG_CONFIG_PATH="$DEPLOYDIR/lib/pkgconfig"
   ./configure --prefix=/ --enable-libxml2 --disable-docs $extra_config_flags
   unset PKG_CONFIG_PATH
-  DESTDIR="$DEPLOYDIR" $MAKECMD -j$NUMCPU
-  DESTDIR="$DEPLOYDIR" $MAKECMD install
+  DESTDIR="$DEPLOYDIR" $MAKECMD VERBOSE=1 -j$NUMCPU
+  DESTDIR="$DEPLOYDIR" $MAKECMD VERBOSE=1 install
 }
 
 build_libffi()
@@ -104,7 +104,7 @@ build_libffi()
   gzip -cd "libffi-$version.tar.gz" | $TARCMD xf -
   cd "libffi-$version"
   ./configure --prefix="$DEPLOYDIR"
-  $MAKECMD -j$NUMCPU
+  $MAKECMD VERBOSE=1 -j$NUMCPU
   $MAKECMD install
 }
 
@@ -127,7 +127,7 @@ build_gettext()
   cd "gettext-$version"
 
   ./configure --prefix="$DEPLOYDIR" --disable-java --disable-native-java
-  $MAKECMD -j$NUMCPU
+  $MAKECMD VERBOSE=1 -j$NUMCPU
   $MAKECMD install
 }
 
@@ -158,7 +158,7 @@ build_glib2()
   export PKG_CONFIG_PATH="$DEPLOYDIR/lib/pkgconfig"
   ./configure --disable-gtk-doc --disable-man --prefix="$DEPLOYDIR" CFLAGS="-I$DEPLOYDIR/include" LDFLAGS="-L$DEPLOYDIR/lib" $OTHERFLAGS 
   unset PKG_CONFIG_PATH
-  $MAKECMD -j$NUMCPU
+  $MAKECMD VERBOSE=1 -j$NUMCPU
   $MAKECMD install
 }
 
@@ -181,8 +181,8 @@ build_ragel()
   cd "ragel-$version"
   sed -e "s/setiosflags(ios::right)/std::&/g" ragel/javacodegen.cpp > ragel/javacodegen.cpp.new && mv ragel/javacodegen.cpp.new ragel/javacodegen.cpp
   ./configure --prefix="$DEPLOYDIR"
-  $MAKECMD -j$NUMCPU
-  $MAKECMD install
+  $MAKECMD VERBOSE=1 -j$NUMCPU
+  $MAKECMD VERBOSE=1 install
 }
 
 build_harfbuzz()
@@ -207,7 +207,7 @@ build_harfbuzz()
   sed -e "s/SUBDIRS = src util test docs/SUBDIRS = src util test/g" Makefile.am > Makefile.am.bak && mv Makefile.am.bak Makefile.am
   sed -e "s/^docs.*$//" configure.ac > configure.ac.bak && mv configure.ac.bak configure.ac
   ./autogen.sh --prefix="$DEPLOYDIR" --with-freetype=yes --with-gobject=no --with-cairo=no --with-icu=no $extra_config_flags
-  $MAKECMD -j$NUMCPU
+  $MAKECMD VERBOSE=1 -j$NUMCPU
   $MAKECMD install
 }
 
@@ -229,7 +229,7 @@ build_binutils()
   gzip -cd "binutils-$version.tar.gz" | $TARCMD xf -
   cd "binutils-$version"
   ./configure --prefix="$DEPLOYDIR"
-  $MAKECMD -j$NUMCPU
-  $MAKECMD install
+  $MAKECMD VERBOSE=1 -j$NUMCPU
+  $MAKECMD VERBOSE=1 install
 }
 
