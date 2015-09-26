@@ -851,6 +851,10 @@ if [ ! "`command -v bison`" ]; then
 fi
 
 if [ "`uname | grep SunOS`" ]; then
+  build_zlib 1.2.8
+ # build_binutils 
+ # build_make 
+  #built_tar
   if [ "`cmake --version | grep 'version 2'`" ]; then
     build_cmake 3.3 3.3.2
   elif [ "`cmake --version | grep 'version 3.2'`" ]; then
@@ -948,9 +952,9 @@ build_glib2 2.46.0
 # the following are only needed for text()
 build_freetype 2.5.0.1 --without-png
 build_libxml2 2.9.1
-exit
-build_fontconfig 2.11.0 --with-add-fonts=/usr/X11R6/lib/X11/fonts,/usr/local/share/fonts
+build_fontconfig 2.11.1 --with-add-fonts=/usr/X11R6/lib/X11/fonts,/usr/local/share/fonts
 build_ragel 6.9
+exit
 build_harfbuzz 0.9.23 --with-glib=yes
 
 echo "OpenSCAD dependencies built and installed to " $BASEDIR

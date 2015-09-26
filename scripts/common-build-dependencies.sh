@@ -57,7 +57,7 @@ build_libxml2()
   gzip -cd "libxml2-$version.tar.gz" | $TARCMD xf - 
   cd "libxml2-$version"
   if [ "`uname | grep SunOS`" ]; then
-    OTHERFLAGS='--with-zlib=/opt/csw'
+    OTHERFLAGS=--with-zlib=$DEPLOYDIR
   fi
   ./configure --disable-silent-rules --prefix="$DEPLOYDIR" --without-ftp --without-http --without-python $OTHERFLAGS
   $MAKECMD -j$NUMCPU
@@ -232,6 +232,29 @@ build_binutils()
   gzip -cd "binutils-$version.tar.gz" | $TARCMD xf -
   cd "binutils-$version"
   ./configure --disable-silent-rules --prefix="$DEPLOYDIR"
+  $MAKECMD -j$NUMCPU
+  $MAKECMD install
+}
+
+
+build_zlib()
+{
+  version=$1
+
+  if [ -e $DEPLOYDIR/include/zlib.h ]; then
+    echo "zlib already installed. not building"
+    return
+  fi
+
+  echo "Building zlib $version..."
+  cd "$BASEDIR"/src
+  rm -rf "zlib-$version"
+  if [ ! -f "zlib-$version.tar.gz" ]; then
+    curl --insecure -LO http://zlib.net/zlib-1.2.8.tar.gz
+  fi
+  gzip -cd "zlib-$version.tar.gz" | $TARCMD xf -
+  cd "zlib-$version"
+  ./configure --prefix="$DEPLOYDIR"
   $MAKECMD -j$NUMCPU
   $MAKECMD install
 }
