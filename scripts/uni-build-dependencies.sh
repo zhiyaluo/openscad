@@ -820,6 +820,8 @@ if [ "`uname | grep SunOS`" ]; then
   build_make 4.1
   build_zlib 1.2.8
   build_binutils 2.25
+  build_flex 2.5.39
+  build_bison 3.0
   # coreutils 8.x broken on solaris
   build_coreutils 7.6
   # libtool, autoconf, automake are for harfbuzz

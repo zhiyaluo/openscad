@@ -37,7 +37,7 @@ debug()
 eigen_sysver()
 {
   debug eigen
-  eigpath=$1/include/eigen3/Eigen/Core/util/Macros.h
+  eigpath=$1/include/eigen3/src/Core/util/Macros.h
   debug $eigpath
   if [ ! -e $eigpath ]; then
     debug eigpath not found
@@ -556,6 +556,7 @@ pretty_print()
 
 find_installed_version()
 {
+  # argument = dependency name, matching one of depname_sysver above
   #result 1 = version number ('1.2.3') result 2 = location '/usr/'
   debug find_installed_version $*
   find_installed_version_result=unknown
@@ -563,6 +564,20 @@ find_installed_version()
   fsv_tmp=
   fsv_tmp2=
   depname=$1
+
+  if [ "`command -v which`" ]; then
+    if [ "`command -v dirname`" ]; then
+     if [ ! "`which $depname | grep ^no.$depname`" ]; then
+        fullpath=`which $depname` 
+        directory=`dirname $fullpath`
+        syspath=`echo $directory | sed s/"bin"//`
+        debug which $depname in $directory, $syspath
+        eval $depname"_sysver" $syspath
+        fsv_tmp=`eval echo "$"$depname"_sysver_result"`
+        fsv_tmp2=`which $depname`
+      fi
+    fi
+  fi
 
   # try to find/parse headers and/or binary output
   # break on the first match. (change the order to change precedence)
@@ -665,6 +680,7 @@ main()
   #deps="$deps curl git" # not technically necessary for build
   #deps="$deps python cmake imagemagick" # only needed for tests
   #deps="cgal"
+  deps="bison flex"
   pretty_print title
   for depname in $deps; do
     debug "processing $dep"

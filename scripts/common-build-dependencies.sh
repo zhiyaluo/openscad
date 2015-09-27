@@ -410,3 +410,50 @@ build_libtool()
   make
   make install
 }
+
+
+build_bison()
+{
+  version=$1
+
+  if [ -e $DEPLOYDIR/bin/bison ]; then
+    echo "bison already installed. not building"
+    return
+  fi
+
+  echo "Building bison $version..."
+  cd "$BASEDIR"/src
+  rm -rf "bison-$version"
+  if [ ! -f "bison-$version.tar.gz" ]; then
+    curl --insecure -LO http://ftp.gnu.org/gnu/bison/bison-$version.tar.gz
+  fi
+  gzip -cd "bison-$version.tar.gz" | $TARCMD xf -
+  cd "bison-$version"
+  ./configure --disable-silent-rules --prefix="$DEPLOYDIR"
+  $MAKECMD -j$NUMCPU
+  $MAKECMD install
+}
+
+
+
+build_flex()
+{
+  version=$1
+
+  if [ -e $DEPLOYDIR/bin/flex ]; then
+    echo "flex already installed. not building"
+    return
+  fi
+
+  echo "Building flex $version..."
+  cd "$BASEDIR"/src
+  rm -rf "flex-$version"
+  if [ ! -f "flex-$version.tar.gz" ]; then
+    curl --insecure -LO http://downloads.sourceforge.net/project/flex/flex-2.5.39.tar.xz
+  fi
+  xz -cd "flex-$version.tar.xz" | $TARCMD xf -
+  cd "flex-$version"
+  ./configure --disable-silent-rules --prefix="$DEPLOYDIR"
+  $MAKECMD -j$NUMCPU
+  $MAKECMD install
+}
