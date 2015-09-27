@@ -822,6 +822,10 @@ if [ "`uname | grep SunOS`" ]; then
   build_binutils 2.25
   # coreutils 8.x broken on solaris
   build_coreutils 7.6
+  # libtool, autoconf, automake are for harfbuzz
+  build_libtool 2.4.5
+  build_autoconf 2.68
+  build_automake 1.14
   if [ "`cmake --version | grep 'version 2'`" ]; then
     build_cmake 3.3 3.3.2
   elif [ "`cmake --version | grep 'version 3.2'`" ]; then
@@ -929,6 +933,6 @@ build_freetype 2.5.0.1 --without-png
 build_libxml2 2.9.1
 build_fontconfig 2.11.1 --with-add-fonts=/usr/X11R6/lib/X11/fonts,/usr/local/share/fonts
 build_ragel 6.9
-build_harfbuzz 0.9.23 --with-glib=yes
+build_harfbuzz 1.0.3 --with-glib=yes
 
 echo "OpenSCAD dependencies built and installed to " $BASEDIR

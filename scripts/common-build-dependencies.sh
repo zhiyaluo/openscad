@@ -206,10 +206,12 @@ build_harfbuzz()
   fi
   gzip -cd "harfbuzz-$version.tar.gz" | $TARCMD -xf -
   cd "harfbuzz-$version"
+  PKG_CONFIG_PATH="$DEPLOYDIR/lib/pkgconfig"
   # disable doc directories as they make problems on Mac OS Build
   sed -e "s/SUBDIRS = src util test docs/SUBDIRS = src util test/g" Makefile.am > Makefile.am.bak && mv Makefile.am.bak Makefile.am
   sed -e "s/^docs.*$//" configure.ac > configure.ac.bak && mv configure.ac.bak configure.ac
-  ./autogen.sh --prefix="$DEPLOYDIR" --with-freetype=yes --with-gobject=no --with-cairo=no --with-icu=no $extra_config_flags
+  ./autogen.sh --prefix="$DEPLOYDIR" --disable-silent-rules --with-freetype=yes --with-gobject=no --with-cairo=no --with-icu=no $extra_config_flags
+  unset PKG_CONFIG_PATH
   $MAKECMD -j$NUMCPU
   $MAKECMD install
 }
@@ -330,6 +332,81 @@ build_make()
   ./configure --disable-silent-rules --prefix="$DEPLOYDIR"
   #tricky.. installed make might not work
   # more reliable to non-paralell build basic utils like make
+  make
+  make install
+}
+
+
+build_automake()
+{
+  version=$1
+
+  if [ -e $DEPLOYDIR/bin/aclocal ]; then
+    echo "automake already installed. not building"
+    return
+  fi
+
+  echo "Building automake $version..."
+  cd "$BASEDIR"/src
+  rm -rf "automake-$version"
+  if [ ! -f "automake-$version.tar.gz" ]; then
+    curl --insecure -LO http://ftp.gnu.org/gnu/automake/automake-$version.tar.gz
+  fi
+  gzip -cd "automake-$version.tar.gz" | $TARCMD xf -
+  cd "automake-$version"
+  ./configure --disable-silent-rules --prefix="$DEPLOYDIR"
+  #tricky.. installed automake might not work
+  # more reliable to non-paralell build basic utils like automake
+  make
+  make install
+}
+
+
+build_autoconf()
+{
+  version=$1
+
+  if [ -e $DEPLOYDIR/bin/autoreconf ]; then
+    echo "autoconf already installed. not building"
+    return
+  fi
+
+  echo "Building autoconf $version..."
+  cd "$BASEDIR"/src
+  rm -rf "autoconf-$version"
+  if [ ! -f "autoconf-$version.tar.gz" ]; then
+    curl --insecure -LO http://ftp.gnu.org/gnu/autoconf/autoconf-$version.tar.gz
+  fi
+  gzip -cd "autoconf-$version.tar.gz" | $TARCMD xf -
+  cd "autoconf-$version"
+  ./configure --disable-silent-rules --prefix="$DEPLOYDIR"
+  #tricky.. installed autoconf might not work
+  # more reliable to non-paralell build basic utils like autoconf
+  make
+  make install
+}
+
+
+build_libtool()
+{
+  version=$1
+
+  if [ -e $DEPLOYDIR/bin/libtool ]; then
+    echo "libtool already installed. not building"
+    return
+  fi
+
+  echo "Building libtool $version..."
+  cd "$BASEDIR"/src
+  rm -rf "libtool-$version"
+  if [ ! -f "libtool-$version.tar.gz" ]; then
+    curl --insecure -LO http://ftp.gnu.org/gnu/libtool/libtool-$version.tar.gz
+  fi
+  gzip -cd "libtool-$version.tar.gz" | $TARCMD xf -
+  cd "libtool-$version"
+  ./configure --disable-silent-rules --prefix="$DEPLOYDIR"
+  #tricky.. installed libtool might not work
+  # more reliable to non-paralell build basic utils like libtool
   make
   make install
 }
