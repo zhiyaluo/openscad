@@ -549,8 +549,8 @@ build_opencsg_makefile()
 
   cat Makefile.bak | sed s/example// | sed s/glew// | sed s/make/$MAKECMD/ > Makefile
   cat src/Makefile.bak | grep -v ^INCPATH | grep -v ^LIBS > src/Makefile.bak2
-  echo "INCPATH = -I$BASEDIR/include -I../include -I.. -I$GLU_INCLUDE -I." > src/header
-  echo "LIBS = -L$BASEDIR/lib -L/usr/X11R6/lib -lGLU -lGL" >> src/header
+  echo "INCPATH = -I$DEPLOYDIR/include -I../include -I.. -I$GLU_INCLUDE -I." > src/header
+  echo "LIBS = -L$DEPLOYDIR/lib -L/usr/X11R6/lib -lGLU -lGL" >> src/header
   cat src/header src/Makefile.bak2 > src/Makefile
 }
 
@@ -562,7 +562,7 @@ build_opencsg()
   fi
   version=$1
   echo "Building OpenCSG" $version "..."
-  cd $BASEDIR/src
+  cd $DEPLOYDIR/src
   rm -rf ./OpenCSG-$version
   if [ ! -f OpenCSG-$version.tar.gz ]; then
     echo downloading
@@ -580,12 +580,16 @@ build_opencsg()
   detect_glu
   GLU_INCLUDE=$detect_glu_include
   if [ ! $detect_glu_result ]; then
+    oldversion=$1
     build_glu 9.0.0
+    version=$oldversion
+    detect_glu
+    GLU_INCLUDE=$detect_glu_include
   fi
   echo GLU_INCLUDE $GLU_INCLUDE
 
   if [ "`uname | grep SunOS`" ]; then
-    OPENCSG_QMAKE='echo none'
+    OPENCSG_QMAKE=
     build_opencsg_makefile
     tmp=$version
     version=$tmp
@@ -601,22 +605,26 @@ build_opencsg()
     OPENCSG_QMAKE=qmake
   else
     echo qmake not found... using standard OpenCSG makefiles
-    OPENCSG_QMAKE='echo none'
+    OPENCSG_QMAKE=
     build_opencsg_makefile
     tmp=$version
     version=$tmp
   fi
 
-  if [ "` echo $OPENCSG_QMAKE | grep none`" ]; then
+  if [ $OPENCSG_QMAKE ]; then
     OPENCSG_QMAKE=$OPENCSG_QMAKE' "QMAKE_CXXFLAGS+=-I'$GLU_INCLUDE'"'
   fi
   echo OPENCSG_QMAKE: $OPENCSG_QMAKE
 
-  cd $BASEDIR/src/OpenCSG-$version/src
-  $OPENCSG_QMAKE
+  cd $DEPLOYDIR/src/OpenCSG-$version/src
+  if [ '$OPENCSG_QMAKE' ]; then
+    $OPENCSG_QMAKE
+  fi
 
-  cd $BASEDIR/src/OpenCSG-$version
-  $OPENCSG_QMAKE
+  cd $DEPLOYDIR/src/OpenCSG-$version
+  if [ '$OPENCSG_QMAKE' ]; then
+    $OPENCSG_QMAKE
+  fi
 
   $MAKECMD
 
@@ -633,8 +641,6 @@ build_opencsg()
   $INSTALLER lib/* $DEPLOYDIR/lib
   $INSTALLER include/* $DEPLOYDIR/include
   if [ -e lib/.libs ]; then $INSTALLER lib/.libs/* $DEPLOYDIR/lib; fi #netbsd
-
-  cd $BASEDIR
 }
 
 build_eigen()

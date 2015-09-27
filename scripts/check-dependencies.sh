@@ -575,8 +575,8 @@ find_installed_version()
   # binary programs (flex,bison,etc)
   if [ "`command -v which`" ]; then
     if [ "`command -v dirname`" ]; then
-     if [ ! "`which $depname | grep ^no.$depname`" ]; then
-        fullpath=`which $depname` 
+     if [ ! "`which $depname 2>&1 | grep no.$depname`" ]; then
+        fullpath=`which $depname 2>&1` 
         directory=`dirname $fullpath`
         syspath=`echo $directory | sed s/"bin"//`
         debug which $depname in $directory, $syspath
