@@ -666,8 +666,13 @@ build_eigen()
   ln -s ./$EIGENDIR eigen-$version
   cd eigen-$version
   rm -rf $DEPLOYDIR/include/eigen3
-  mkdir $DEPLOYDIR/include
-  mv ./Eigen $DEPLOYDIR/include/eigen3
+  if [ ! -e $DEPLOYDIR/include ]; then
+    mkdir $DEPLOYDIR/include
+  fi
+  if [ ! -e $DEPLOYDIR/include/eigen3 ]; then
+    mkdir $DEPLOYDIR/include/eigen3
+  fi
+  mv ./Eigen $DEPLOYDIR/include/eigen3/
   # Eigen's cmake install-to-prefix is broken. 
   #  mkdir build
   #  cd build
