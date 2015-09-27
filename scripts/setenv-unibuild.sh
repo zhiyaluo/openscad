@@ -110,7 +110,7 @@ setenv_sunos()
  #CXX='g++ -m64'
  CC='gcc -m32'
  CXX='g++ -m32'
- PKG_CONFIG_PATH=$PKG_CONFIG_PATH:/usr/lib/pkgconfig
+ PKG_CONFIG_PATH=$DEPLOYDIR
 
  export PKG_CONFIG_PATH
  export CC
