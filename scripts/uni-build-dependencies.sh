@@ -536,11 +536,13 @@ build_glew()
 
   GLEW_DEST=$DEPLOYDIR make $MAKEFLAGS -j$NUMCPU
   GLEW_DEST=$DEPLOYDIR make $MAKEFLAGS install
-  if [ $GLEW_INSTALLED ]; then
+
+  check_glew
+  if [ $check_glew_result ]; then
     echo glew installed to $DEPLOYDIR
   else
-    exit
     echo glew install failed
+    exit
   fi
 }
 
@@ -591,12 +593,7 @@ build_opencsg()
   fi
   echo GLU_INCLUDE $GLU_INCLUDE
 
-  if [ "`uname | grep SunOS`" ]; then
-    OPENCSG_QMAKE=
-    build_opencsg_makefile
-    tmp=$version
-    version=$tmp
-  elif [ "`command -v qmake-qt4`" ]; then
+  if [ "`command -v qmake-qt4`" ]; then
     OPENCSG_QMAKE=qmake-qt4
   elif [ "`command -v qmake4`" ]; then
     OPENCSG_QMAKE=qmake4
@@ -616,6 +613,14 @@ build_opencsg()
 
   if [ $OPENCSG_QMAKE ]; then
     OPENCSG_QMAKE=$OPENCSG_QMAKE' "QMAKE_CXXFLAGS+=-I'$GLU_INCLUDE'"'
+    # sparc cpu needs the m64/m32 thing
+    if [ "`echo $CC | grep ..m64 `" ]; then
+      OPENCSG_QMAKE=$OPENCSG_QMAKE' "QMAKE_CXXFLAGS+=-m64"'
+      OPENCSG_QMAKE=$OPENCSG_QMAKE' "QMAKE_CXXFLAGS+=-Wunknown-pragmas"'
+    elif [ "`echo $CC | grep ..m32 `" ]; then
+      OPENCSG_QMAKE=$OPENCSG_QMAKE' "QMAKE_CXXFLAGS+=-m32"'
+      OPENCSG_QMAKE=$OPENCSG_QMAKE' "QMAKE_CXXFLAGS+=-Wunknown-pragmas"'
+    fi
   fi
   echo OPENCSG_QMAKE: $OPENCSG_QMAKE
 
