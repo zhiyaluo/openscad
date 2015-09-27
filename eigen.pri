@@ -33,7 +33,7 @@ isEmpty(EIGEN_INCLUDEPATH) {
   macx: EIGEN_INCLUDEPATH = /opt/local/include/eigen3
 }
 
-!exists($$EIGEN_INCLUDEPATH/Eigen/Core) {
+!exists($$EIGEN_INCLUDEPATH/Eigen) {
   EIGEN_CFLAGS = $$system("pkg-config --cflags eigen3")
   EIGEN_INCLUDEPATH = $$replace(EIGEN_CFLAGS,"-I","")
 }

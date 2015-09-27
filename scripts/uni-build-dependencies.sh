@@ -195,23 +195,6 @@ build_qt5scintilla2()
   $MAKECMD -j"$NUMCPU" install
 }
 
-build_bison()
-{
-  version=$1
-  echo "Building bison" $version
-  cd $BASEDIR/src
-  rm -rf ./bison-$version
-  if [ ! -f bison-$version.tar.gz ]; then
-    echo downloading
-    curl --insecure -O http://ftp.gnu.org/gnu/bison/bison-$version.tar.gz
-  fi
-  gzip -cd bison-$version.tar.gz | $TARCMD xf -
-  cd bison-$version
-  ./configure --prefix=$DEPLOYDIR
-  $MAKECMD -j$NUMCPU
-  $MAKECMD install
-}
-
 build_git()
 {
   version=$1
@@ -816,18 +799,20 @@ mkdir -p $SRCDIR $DEPLOYDIR
 # they are installed under $BASEDIR/bin which we have added to our PATH above
 
 if [ "`uname | grep SunOS`" ]; then
+  # on solaris, the default tools are all broken. 
+  # CSW can help, but if you dont have root...
   build_tar 1.27
   build_make 4.1
   build_zlib 1.2.8
   build_binutils 2.25
-  build_flex 2.5.39
-  build_bison 3.0
   # coreutils 8.x broken on solaris
   build_coreutils 7.6
   # libtool, autoconf, automake are for harfbuzz
   build_libtool 2.4.5
   build_autoconf 2.68
   build_automake 1.14
+  build_flex 2.5.39
+  build_bison 3.0
   if [ "`cmake --version | grep 'version 2'`" ]; then
     build_cmake 3.3 3.3.2
   elif [ "`cmake --version | grep 'version 3.2'`" ]; then

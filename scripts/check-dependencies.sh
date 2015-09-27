@@ -167,66 +167,26 @@ gmp_sysver()
 
 qt_sysver()
 {
-  if [ "`command -v qtchooser`" ]; then
-    if qtchooser -run-tool=qmake -qt=5 -v >/dev/null 2>&1 ; then
-      export QT_SELECT=5
-      qtpath="`qtchooser -run-tool=qmake -qt=5 -query QT_INSTALL_HEADERS`"/QtCore/qglobal.h 
-    fi
-    if [ ! -e "$qtpath" ]; then
-      if qtchooser -run-tool=qmake -qt=4 -v >/dev/null 2>&1 ; then
-        export QT_SELECT=4
-        qtpath="`qtchooser -run-tool=qmake -qt=4 -query QT_INSTALL_HEADERS`"/QtCore/qglobal.h 
-      fi
-    fi
-  else
-    export QT_SELECT=5
-    qtpath=$1/include/qt5/QtCore/qglobal.h
-    if [ ! -e $qtpath ]; then
-      qtpath=$1/include/i686-linux-gnu/qt5/QtCore/qglobal.h
-    fi
-    if [ ! -e $qtpath ]; then
-      qtpath=$1/include/x86_64-linux-gnu/qt5/QtCore/qglobal.h
-    fi
-    if [ ! -e $qtpath ]; then
-      export QT_SELECT=4
-      qtpath=$1/include/qt4/QtCore/qglobal.h
-    fi
-    if [ ! -e $qtpath ]; then
-      qtpath=$1/include/QtCore/qglobal.h
-    fi
-    if [ ! -e $qtpath ]; then
-      # netbsd
-      qtpath=$1/qt4/include/QtCore/qglobal.h 
-    fi
-  fi
-  if [ ! -e "$qtpath" ]; then
-    unset QT_SELECT
+  debug qt_sysver $1
+  qtglobal=$1/QtCore/qglobal.h 
+  if [ ! -e "$qtglobal" ]; then
+    debug $qtglobal not found
     return
+  else
+    debug $qtglobal found
   fi
-  qtver=`grep 'define  *QT_VERSION_STR  *' $qtpath | awk '{print $3}'`
+  qtver=`grep 'define  *QT_VERSION_STR  *' $qtglobal | awk '{print $3}'`
   qtver=`echo $qtver | sed s/'"'//g`
   qt_sysver_result=$qtver
 }
 
 qscintilla2_sysver()
 {
-  # expecting the QT_SELECT already set in case we found qtchooser
-  if qmake -v >/dev/null 2>&1 ; then
-    QMAKE=qmake
-  elif [ "`command -v qmake-qt4`" ]; then
-    QMAKE=qmake-qt4
-  fi
-  debug using qmake: $QMAKE
-
-  qtincdir="`$QMAKE -query QT_INSTALL_HEADERS`"
-  qscipath="$qtincdir/Qsci/qsciglobal.h"
-  debug using qtincdir: $qtincdir
-  debug using qscipath: $qscipath
+  qscipath="$1/Qsci/qsciglobal.h"
   if [ ! -e $qscipath ]; then
     debug qscipath doesnt exist. giving up on version.
     return
   fi
-
   qsciver=`grep define.*QSCINTILLA_VERSION_STR "$qscipath" | awk '{print $3}'`
   qsciver=`echo $qsciver | sed s/'"'//g`
   qscintilla2_sysver_result="$qsciver"
@@ -554,6 +514,39 @@ pretty_print()
   pp_location=
 }
 
+find_qt_paths()
+{
+  # depend on qmake query QT_INSTALL_HEADERS.
+  # if qtchooser, qmake, or qmake-qt4 isn't in the path this will fail
+
+  find_qt_paths_result=
+
+  qtpath=
+  if [ "`command -v qtchooser`" ]; then
+    if qtchooser -run-tool=qmake -qt=5 -v >/dev/null 2>&1 ; then
+      qtpath="`qtchooser -run-tool=qmake -qt=5 -query QT_INSTALL_HEADERS`"/QtCore/qglobal.h 
+    fi
+    if [ ! -e "$qtpath" ]; then
+      if qtchooser -run-tool=qmake -qt=4 -v >/dev/null 2>&1 ; then
+        qtpath="`qtchooser -run-tool=qmake -qt=4 -query QT_INSTALL_HEADERS`"/QtCore/qglobal.h 
+      fi
+    fi
+  fi
+
+  if [ ! $qtpath ]; then
+    if [ "`command -v qmake`" ]; then
+      QMAKE=qmake
+    elif [ "`command -v qmake-qt4`" ]; then
+      QMAKE=qmake-qt4
+    fi
+    debug using qmake: $QMAKE
+    qtpath="`$QMAKE -query QT_INSTALL_HEADERS`"
+    debug using qtpath: $qtpath
+  fi
+
+  find_qt_paths_result=$qtpath
+}
+
 find_installed_version()
 {
   # argument = dependency name, matching one of depname_sysver above
@@ -565,6 +558,21 @@ find_installed_version()
   fsv_tmp2=
   depname=$1
 
+  find_qt_paths
+  qtpaths=$find_qt_paths_result
+  if [ ! $fsv_tmp ]; then
+    for syspath in $qtpaths ; do
+      if [ -e $syspath ]; then
+        debug $depname"_sysver" $syspath
+        eval $depname"_sysver" $syspath
+        fsv_tmp=`eval echo "$"$depname"_sysver_result"`
+        fsv_tmp2=$syspath
+        if [ $fsv_tmp ]; then break; fi
+      fi
+    done
+  fi
+  
+  # binary programs (flex,bison,etc)
   if [ "`command -v which`" ]; then
     if [ "`command -v dirname`" ]; then
      if [ ! "`which $depname | grep ^no.$depname`" ]; then
@@ -676,11 +684,13 @@ checkargs()
 
 main()
 {
-  deps="qt qscintilla2 cgal gmp mpfr boost opencsg glew eigen glib2 fontconfig freetype2 harfbuzz bison flex make"
+  deps="$deps qt qscintilla2"
+  deps="$deps cgal gmp mpfr boost opencsg glew eigen glib2"
+  deps="$deps fontconfig freetype2 harfbuzz"
+  deps="$deps bison flex make"
   #deps="$deps curl git" # not technically necessary for build
   #deps="$deps python cmake imagemagick" # only needed for tests
   #deps="cgal"
-  deps="bison flex"
   pretty_print title
   for depname in $deps; do
     debug "processing $dep"
