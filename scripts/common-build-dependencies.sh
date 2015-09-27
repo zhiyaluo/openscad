@@ -7,15 +7,6 @@
 # scripts/macosx-build-             - mac osx options
 # scripts/mingw-x-build-            - not used, MXE handles all dependencies.
 
-# on some systems the scripts/setenv script can provide 
-# better tar and make
-if [ ! $TARCMD ]; then
-  TARCMD=tar
-fi
-if [ ! $TARCMD ]; then
-  MAKECMD=make
-fi
-
 build_freetype()
 {
   version="$1"
@@ -32,11 +23,11 @@ build_freetype()
   if [ ! -f "freetype-$version.tar.gz" ]; then
     curl --insecure -LO "http://download.savannah.gnu.org/releases/freetype/freetype-$version.tar.gz"
   fi
-  gzip -cd "freetype-$version.tar.gz" | $TARCMD xf -
+  gzip -cd "freetype-$version.tar.gz" | tar xf -
   cd "freetype-$version"
   ./configure --disable-silent-rules --prefix="$DEPLOYDIR" $extra_config_flags
-  $MAKECMD -j"$NUMCPU"
-  $MAKECMD install
+  make -j"$NUMCPU"
+  make install
 }
  
 build_libxml2()
@@ -54,14 +45,14 @@ build_libxml2()
   if [ ! -f "libxml2-$version.tar.gz" ]; then
     curl --insecure -LO "ftp://xmlsoft.org/libxml2/libxml2-$version.tar.gz"
   fi
-  gzip -cd "libxml2-$version.tar.gz" | $TARCMD xf - 
+  gzip -cd "libxml2-$version.tar.gz" | tar xf - 
   cd "libxml2-$version"
   if [ "`uname | grep SunOS`" ]; then
     OTHERFLAGS=--with-zlib=$DEPLOYDIR
   fi
   ./configure --disable-silent-rules --prefix="$DEPLOYDIR" --without-ftp --without-http --without-python $OTHERFLAGS
-  $MAKECMD -j$NUMCPU
-  $MAKECMD install
+  make -j$NUMCPU
+  make install
 }
 
 build_fontconfig()
@@ -80,13 +71,13 @@ build_fontconfig()
   if [ ! -f "fontconfig-$version.tar.gz" ]; then
     curl --insecure -LO "http://www.freedesktop.org/software/fontconfig/release/fontconfig-$version.tar.gz"
   fi
-  gzip -cd  "fontconfig-$version.tar.gz" | $TARCMD xf -
+  gzip -cd  "fontconfig-$version.tar.gz" | tar xf -
   cd "fontconfig-$version"
   export PKG_CONFIG_PATH="$DEPLOYDIR/lib/pkgconfig"
   ./configure --disable-silent-rules --prefix=/ --enable-libxml2 --disable-docs $extra_config_flags
   unset PKG_CONFIG_PATH
-  DESTDIR="$DEPLOYDIR" $MAKECMD -j$NUMCPU
-  DESTDIR="$DEPLOYDIR" $MAKECMD install
+  DESTDIR="$DEPLOYDIR" make -j$NUMCPU
+  DESTDIR="$DEPLOYDIR" make install
 }
 
 build_libffi()
@@ -104,11 +95,11 @@ build_libffi()
   if [ ! -f "libffi-$version.tar.gz" ]; then
     curl --insecure -LO "ftp://sourceware.org/pub/libffi/libffi-$version.tar.gz"
   fi
-  gzip -cd "libffi-$version.tar.gz" | $TARCMD xf -
+  gzip -cd "libffi-$version.tar.gz" | tar xf -
   cd "libffi-$version"
   ./configure --disable-silent-rules --prefix="$DEPLOYDIR"
-  $MAKECMD -j$NUMCPU
-  $MAKECMD install
+  make -j$NUMCPU
+  make install
 }
 
 build_gettext()
@@ -126,12 +117,12 @@ build_gettext()
   if [ ! -f "gettext-$version.tar.gz" ]; then
     curl --insecure -LO "http://ftpmirror.gnu.org/gettext/gettext-$version.tar.gz"
   fi
-  gzip -cd "gettext-$version.tar.gz" | $TARCMD xf -
+  gzip -cd "gettext-$version.tar.gz" | tar xf -
   cd "gettext-$version"
 
   ./configure --disable-silent-rules --prefix="$DEPLOYDIR" --disable-java --disable-native-java
-  $MAKECMD -j$NUMCPU
-  $MAKECMD install
+  make -j$NUMCPU
+  make install
 }
 
 build_glib2()
@@ -150,7 +141,7 @@ build_glib2()
   if [ ! -f "glib-$version.tar.xz" ]; then
     curl --insecure -LO "http://ftp.gnome.org/pub/gnome/sources/glib/$maj_min_version/glib-$version.tar.xz"
   fi
-  xz -cd "glib-$version.tar.xz" | $TARCMD xf -
+  xz -cd "glib-$version.tar.xz" | tar xf -
   cd "glib-$version"
 
   if [ "`uname | grep SunOS`" ]; then
@@ -161,8 +152,8 @@ build_glib2()
   export PKG_CONFIG_PATH="$DEPLOYDIR/lib/pkgconfig"
   ./configure --disable-silent-rules --disable-gtk-doc --disable-man --prefix="$DEPLOYDIR" CFLAGS="-I$DEPLOYDIR/include" LDFLAGS="-L$DEPLOYDIR/lib" $OTHERFLAGS 
   unset PKG_CONFIG_PATH
-  $MAKECMD -j$NUMCPU
-  $MAKECMD install
+  make -j$NUMCPU
+  make install
 }
 
 build_ragel()
@@ -180,12 +171,12 @@ build_ragel()
   if [ ! -f "ragel-$version.tar.gz" ]; then
     curl --insecure -LO "http://www.colm.net/files/ragel/ragel-$version.tar.gz"
   fi
-  gzip -cd  "ragel-$version.tar.gz" | $TARCMD xf -
+  gzip -cd  "ragel-$version.tar.gz" | tar xf -
   cd "ragel-$version"
   sed -e "s/setiosflags(ios::right)/std::&/g" ragel/javacodegen.cpp > ragel/javacodegen.cpp.new && mv ragel/javacodegen.cpp.new ragel/javacodegen.cpp
   ./configure --disable-silent-rules --prefix="$DEPLOYDIR"
-  $MAKECMD -j$NUMCPU
-  $MAKECMD install
+  make -j$NUMCPU
+  make install
 }
 
 build_harfbuzz()
@@ -204,7 +195,7 @@ build_harfbuzz()
   if [ ! -f "harfbuzz-$version.tar.gz" ]; then
     curl --insecure -LO "http://cgit.freedesktop.org/harfbuzz/snapshot/harfbuzz-$version.tar.gz"
   fi
-  gzip -cd "harfbuzz-$version.tar.gz" | $TARCMD -xf -
+  gzip -cd "harfbuzz-$version.tar.gz" | tar -xf -
   cd "harfbuzz-$version"
   PKG_CONFIG_PATH="$DEPLOYDIR/lib/pkgconfig"
   # disable doc directories as they make problems on Mac OS Build
@@ -212,8 +203,8 @@ build_harfbuzz()
   sed -e "s/^docs.*$//" configure.ac > configure.ac.bak && mv configure.ac.bak configure.ac
   ./autogen.sh --prefix="$DEPLOYDIR" --disable-silent-rules --with-freetype=yes --with-gobject=no --with-cairo=no --with-icu=no $extra_config_flags
   unset PKG_CONFIG_PATH
-  $MAKECMD -j$NUMCPU
-  $MAKECMD install
+  make -j$NUMCPU
+  make install
 }
 
 build_binutils()
@@ -231,11 +222,12 @@ build_binutils()
   if [ ! -f "binutils-$version.tar.gz" ]; then
     curl --insecure -LO http://ftp.gnu.org/gnu/binutils/binutils-$version.tar.gz
   fi
-  gzip -cd "binutils-$version.tar.gz" | $TARCMD xf -
+  gzip -cd "binutils-$version.tar.gz" | tar xf -
   cd "binutils-$version"
   ./configure --disable-silent-rules --prefix="$DEPLOYDIR"
-  $MAKECMD -j$NUMCPU
-  $MAKECMD install
+  # more reliable to non-paralell build basic utils like binutils
+  make
+  make install
 }
 
 
@@ -254,11 +246,12 @@ build_coreutils()
   if [ ! -f "coreutils-$version.tar.xz" ]; then
     curl --insecure -LO http://ftp.gnu.org/gnu/coreutils/coreutils-$version.tar.xz
   fi
-  xz -cd "coreutils-$version.tar.xz" | $TARCMD xf -
+  xz -cd "coreutils-$version.tar.xz" | tar xf -
   cd "coreutils-$version"
   ./configure --disable-silent-rules --prefix="$DEPLOYDIR"
-  $MAKECMD
-  $MAKECMD install
+  # more reliable to non-paralell build basic utils like coreutils
+  make
+  make install
 }
 
 
@@ -277,12 +270,12 @@ build_zlib()
   if [ ! -f "zlib-$version.tar.gz" ]; then
     curl --insecure -LO http://zlib.net/zlib-$version.tar.gz
   fi
-  gzip -cd "zlib-$version.tar.gz" | $TARCMD xf -
+  gzip -cd "zlib-$version.tar.gz" | tar xf -
   cd "zlib-$version"
   ./configure --prefix="$DEPLOYDIR"
   # more reliable to non-paralell build basic utils like zlib
-  $MAKECMD
-  $MAKECMD install
+  make
+  make install
 }
 
 
@@ -327,7 +320,7 @@ build_make()
   if [ ! -f "make-$version.tar.gz" ]; then
     curl --insecure -LO http://ftp.gnu.org/gnu/make/make-$version.tar.gz
   fi
-  gzip -cd "make-$version.tar.gz" | $TARCMD xf -
+  gzip -cd "make-$version.tar.gz" | tar xf -
   cd "make-$version"
   ./configure --disable-silent-rules --prefix="$DEPLOYDIR"
   #tricky.. installed make might not work
@@ -352,7 +345,7 @@ build_automake()
   if [ ! -f "automake-$version.tar.gz" ]; then
     curl --insecure -LO http://ftp.gnu.org/gnu/automake/automake-$version.tar.gz
   fi
-  gzip -cd "automake-$version.tar.gz" | $TARCMD xf -
+  gzip -cd "automake-$version.tar.gz" | tar xf -
   cd "automake-$version"
   ./configure --disable-silent-rules --prefix="$DEPLOYDIR"
   #tricky.. installed automake might not work
@@ -377,7 +370,7 @@ build_autoconf()
   if [ ! -f "autoconf-$version.tar.gz" ]; then
     curl --insecure -LO http://ftp.gnu.org/gnu/autoconf/autoconf-$version.tar.gz
   fi
-  gzip -cd "autoconf-$version.tar.gz" | $TARCMD xf -
+  gzip -cd "autoconf-$version.tar.gz" | tar xf -
   cd "autoconf-$version"
   ./configure --disable-silent-rules --prefix="$DEPLOYDIR"
   #tricky.. installed autoconf might not work
@@ -402,7 +395,7 @@ build_libtool()
   if [ ! -f "libtool-$version.tar.gz" ]; then
     curl --insecure -LO http://ftp.gnu.org/gnu/libtool/libtool-$version.tar.gz
   fi
-  gzip -cd "libtool-$version.tar.gz" | $TARCMD xf -
+  gzip -cd "libtool-$version.tar.gz" | tar xf -
   cd "libtool-$version"
   ./configure --disable-silent-rules --prefix="$DEPLOYDIR"
   #tricky.. installed libtool might not work
@@ -427,11 +420,11 @@ build_bison()
   if [ ! -f "bison-$version.tar.gz" ]; then
     curl --insecure -LO http://ftp.gnu.org/gnu/bison/bison-$version.tar.gz
   fi
-  gzip -cd "bison-$version.tar.gz" | $TARCMD xf -
+  gzip -cd "bison-$version.tar.gz" | tar xf -
   cd "bison-$version"
   ./configure --disable-silent-rules --prefix="$DEPLOYDIR"
-  $MAKECMD -j$NUMCPU
-  $MAKECMD install
+  make -j$NUMCPU
+  make install
 }
 
 
@@ -451,9 +444,9 @@ build_flex()
   if [ ! -f "flex-$version.tar.gz" ]; then
     curl --insecure -LO http://downloads.sourceforge.net/project/flex/flex-2.5.39.tar.xz
   fi
-  xz -cd "flex-$version.tar.xz" | $TARCMD xf -
+  xz -cd "flex-$version.tar.xz" | tar xf -
   cd "flex-$version"
   ./configure --disable-silent-rules --prefix="$DEPLOYDIR"
-  $MAKECMD -j$NUMCPU
-  $MAKECMD install
+  make -j$NUMCPU
+  make install
 }

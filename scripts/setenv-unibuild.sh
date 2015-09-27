@@ -25,8 +25,6 @@ setenv_common()
  export LD_RUN_PATH=$DEPLOYDIR/lib:$DEPLOYDIR/lib64
  export OPENSCAD_LIBRARIES=$DEPLOYDIR
  export GLEWDIR=$DEPLOYDIR
- export TARCMD=tar
- export MAKECMD=make
 
  echo BASEDIR: $BASEDIR
  echo DEPLOYDIR: $DEPLOYDIR
@@ -35,8 +33,6 @@ setenv_common()
  echo LD_RUN_PATH modified
  echo OPENSCAD_LIBRARIES modified
  echo GLEWDIR modified
- echo TARCMD: $TARCMD
- echo MAKECMD: $MAKECMD
 }
 
 setenv_freebsd()
@@ -110,28 +106,20 @@ setenv_sunos()
 {
  # we need opencsw.
  # see http://www.opencsw.org/manual/for-developers/index.html
- CC='gcc -m64'
- CXX='g++ -m64'
+ #CC='gcc -m64'
+ #CXX='g++ -m64'
+ CC='gcc -m32'
+ CXX='g++ -m32'
  PKG_CONFIG_PATH=$PKG_CONFIG_PATH:/usr/lib/pkgconfig
- TARCMD=gtar
- MAKECMD=gmake
- #CSWBIN=/opt/csw/sparc-sun-solaris2.10/bin/
- #PATH=$CSWBIN:$PATH
 
  export PKG_CONFIG_PATH
  export CC
  export CXX
- export TARCMD
- export MAKECMD
- #export CSWBIN
  export PATH
 
  echo CC has been modified: $CC
  echo CXX has been modified: $CXX
  echo PKG_CONFIG_PATH modified: $PKG_CONFIG_PATH
- echo TARCMD has been modified: $TARCMD
- echo MAKECMD has been modified: $MAKECMD
- #echo PATH has been modified w $CSWBIN
 }
 
 clean_note()
