@@ -37,9 +37,14 @@ debug()
 eigen_sysver()
 {
   debug eigen
-  eigpath=$1/include/eigen3/Eigen/src/Core/util/Macros.h
+  eigpath=$1/include/eigen3/Eigen/Core/util/Macros.h
   debug $eigpath
-  if [ ! -e $eigpath ]; then return; fi
+  if [ ! -e $eigpath ]; then
+    debug eigpath not found
+    return 
+  else
+    debug eigpath found
+  fi
   eswrld=`grep "define  *EIGEN_WORLD_VERSION  *[0-9]*" $eigpath | awk '{print $3}'`
   esmaj=`grep "define  *EIGEN_MAJOR_VERSION  *[0-9]*" $eigpath | awk '{print $3}'`
   esmin=`grep "define  *EIGEN_MINOR_VERSION  *[0-9]*" $eigpath | awk '{print $3}'`
@@ -50,7 +55,7 @@ opencsg_sysver()
 {
   debug opencsg_sysver
   if [ ! -e $1/include/opencsg.h ]; then return; fi
-  ocsgver=`grep -a "define  *OPENCSG_VERSION_STRING *[0-9x]*" $1/include/opencsg.h`
+  ocsgver=`grep "define  *OPENCSG_VERSION_STRING *[0-9x]*" $1/include/opencsg.h`
   ocsgver=`echo $ocsgver | awk '{print $4}' | sed s/'"'//g | sed s/[^1-9.]//g`
   opencsg_sysver_result=$ocsgver
 }
@@ -520,7 +525,8 @@ pretty_print()
   nocolor="\033[0m"
 
   ppstr="%s%-12s"
-  pp_format='{printf("'$ppstr$ppstr$ppstr$ppstr$ppstr$nocolor'\n",$1,$2,$3,$4,$5,$6,$7,$8,$9,$10)}'
+  ppstr2="%s%-8s"
+  pp_format='{printf("'$ppstr$ppstr2$ppstr2$ppstr2$ppstr2$nocolor'\n",$1,$2,$3,$4,$5,$6,$7,$8,$9,$10)}'
   pp_title="$gray depname $gray minimum $gray found $gray OKness $gray location"
   if [ $1 ]; then pp_depname=$1; fi
   if [ $pp_depname = "title" ]; then
@@ -550,6 +556,7 @@ pretty_print()
 
 find_installed_version()
 {
+  #result 1 = version number ('1.2.3') result 2 = location '/usr/'
   debug find_installed_version $*
   find_installed_version_result=unknown
   find_installed_version_result2=unknown
