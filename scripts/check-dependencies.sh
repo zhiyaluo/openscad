@@ -37,7 +37,7 @@ debug()
 eigen_sysver()
 {
   debug eigen
-  eigpath=$1/include/eigen3/src/Core/util/Macros.h
+  eigpath=$1/include/eigen3/Eigen/src/Core/util/Macros.h
   debug $eigpath
   if [ ! -e $eigpath ]; then
     debug eigpath not found

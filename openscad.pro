@@ -139,6 +139,11 @@ netbsd* {
    }
 }
 
+solaris* {
+     QMAKE_CXXFLAGS += -m64
+     QMAKE_CFLAGS += -m64
+}
+
 # Prevent LD_LIBRARY_PATH problems when running the openscad binary
 # on systems where uni-build-dependencies.sh was used.
 # Will not affect 'normal' builds.
