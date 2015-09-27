@@ -68,7 +68,8 @@ AbstractNode *TextModule::instantiate(const Context *ctx, const ModuleInstantiat
 	// by using a fraction of the number of full circle segments
 	// the resolution will be better matching the detail level of
 	// other objects.
-	int text_segments = std::max(((int)floor(segments / 8)) + 1, 2);
+        int segments_floor = static_cast<int>(floor(segments/8.0));
+	int text_segments = std::max(segments_floor + 1, 2);
 
 	node->params.set_size(size);
 	node->params.set_segments(text_segments);
