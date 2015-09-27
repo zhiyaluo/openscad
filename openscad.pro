@@ -140,8 +140,15 @@ netbsd* {
 }
 
 solaris* {
-     QMAKE_CXXFLAGS += -m64
-     QMAKE_CFLAGS += -m64
+   CCM=$$(CC)
+   contains(CCM,.*m32) {
+      QMAKE_CXXFLAGS += -m32
+      QMAKE_CFLAGS += -m32
+   }
+   contains(CCM,.*m64) {
+      QMAKE_CXXFLAGS += -m64
+      QMAKE_CFLAGS += -m64
+   }
 }
 
 # Prevent LD_LIBRARY_PATH problems when running the openscad binary
