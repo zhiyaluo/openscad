@@ -12,4 +12,8 @@ opencsg {
   }
 
   LIBS += -lopencsg
+
+  solaris* {
+    QMAKE_CXXFLAGS += -Wno-unknown-pragmas
+  }
 }

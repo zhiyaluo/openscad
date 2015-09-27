@@ -128,7 +128,7 @@ public:
 						Vector3l k(jx, jy, jz);
 						typename GridContainer::iterator tmpiter = db.find(k);
 						if (tmpiter == db.end()) continue;
-						float d = sqrt((key-k).squaredNorm());
+						float d = sqrt(static_cast<float>((key-k).squaredNorm()));
 						if (d < dist) {
 						  dist = d;
 							iter = tmpiter;
