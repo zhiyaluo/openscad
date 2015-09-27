@@ -485,7 +485,9 @@ void ScintillaEditor::initMargin()
 void ScintillaEditor::onTextChanged()
 {
   QFontMetrics fontmetrics(this->currentFont);
-  qsci->setMarginWidth(1, QString(trunc(log10(qsci->lines())+2), '0'));
+  long lines = qsci->lines();
+  double newlines = trunc( log10( static_cast<double>(lines) ) + 2 );
+  qsci->setMarginWidth(1, QString( newlines, '0'));
 }
 
 bool ScintillaEditor::find(const QString &expr, bool findNext, bool findBackwards)
