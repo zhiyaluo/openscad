@@ -204,7 +204,7 @@ build_harfbuzz()
   if [ ! -f "harfbuzz-$version.tar.gz" ]; then
     curl --insecure -LO "http://cgit.freedesktop.org/harfbuzz/snapshot/harfbuzz-$version.tar.gz"
   fi
-  gzip -cd "harfbuzz-$version.tar.gz" | $TARCMD-xf -
+  gzip -cd "harfbuzz-$version.tar.gz" | $TARCMD -xf -
   cd "harfbuzz-$version"
   # disable doc directories as they make problems on Mac OS Build
   sed -e "s/SUBDIRS = src util test docs/SUBDIRS = src util test/g" Makefile.am > Makefile.am.bak && mv Makefile.am.bak Makefile.am
@@ -237,6 +237,29 @@ build_binutils()
 }
 
 
+build_coreutils()
+{
+  version=$1
+
+  if [ -e $DEPLOYDIR/bin/ls ]; then
+    echo "coreutils already installed. not building"
+    return
+  fi
+
+  echo "Building coreutils $version..."
+  cd "$BASEDIR"/src
+  rm -rf "coreutils-$version"
+  if [ ! -f "coreutils-$version.tar.xz" ]; then
+    curl --insecure -LO http://ftp.gnu.org/gnu/coreutils/coreutils-$version.tar.xz
+  fi
+  xz -cd "coreutils-$version.tar.xz" | $TARCMD xf -
+  cd "coreutils-$version"
+  ./configure --disable-silent-rules --prefix="$DEPLOYDIR"
+  $MAKECMD
+  $MAKECMD install
+}
+
+
 build_zlib()
 {
   version=$1
@@ -250,12 +273,63 @@ build_zlib()
   cd "$BASEDIR"/src
   rm -rf "zlib-$version"
   if [ ! -f "zlib-$version.tar.gz" ]; then
-    curl --insecure -LO http://zlib.net/zlib-1.2.8.tar.gz
+    curl --insecure -LO http://zlib.net/zlib-$version.tar.gz
   fi
   gzip -cd "zlib-$version.tar.gz" | $TARCMD xf -
   cd "zlib-$version"
   ./configure --prefix="$DEPLOYDIR"
-  $MAKECMD -j$NUMCPU
+  # more reliable to non-paralell build basic utils like zlib
+  $MAKECMD
   $MAKECMD install
 }
 
+
+
+build_tar()
+{
+  version=$1
+
+  if [ -e $DEPLOYDIR/bin/tar ]; then
+    echo "tar already installed. not building"
+    return
+  fi
+
+  echo "Building tar $version..."
+  cd "$BASEDIR"/src
+  rm -rf "tar-$version"
+  if [ ! -f "tar-$version.shar" ]; then
+    curl --insecure -LO http://ftp.gnu.org/gnu/tar/tar-$version.shar.gz
+  fi
+  gzip -d "tar-$version.shar.gz"
+  bash ./tar-$version.shar
+  cd "tar-$version"
+  ./configure --disable-silent-rules --prefix="$DEPLOYDIR"
+  # more reliable to non-paralell build basic utils like tar
+  #tricky.. installed make might not work
+  make 
+  make install
+}
+
+build_make()
+{
+  version=$1
+
+  if [ -e $DEPLOYDIR/bin/make ]; then
+    echo "make already installed. not building"
+    return
+  fi
+
+  echo "Building make $version..."
+  cd "$BASEDIR"/src
+  rm -rf "make-$version"
+  if [ ! -f "make-$version.tar.gz" ]; then
+    curl --insecure -LO http://ftp.gnu.org/gnu/make/make-$version.tar.gz
+  fi
+  gzip -cd "make-$version.tar.gz" | $TARCMD xf -
+  cd "make-$version"
+  ./configure --disable-silent-rules --prefix="$DEPLOYDIR"
+  #tricky.. installed make might not work
+  # more reliable to non-paralell build basic utils like make
+  make
+  make install
+}

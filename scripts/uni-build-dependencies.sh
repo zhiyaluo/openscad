@@ -813,7 +813,21 @@ echo "Number of CPUs for parallel builds:" $NUMCPU
 mkdir -p $SRCDIR $DEPLOYDIR
 
 # this section builds some basic tools, if they are missing or outdated
-# they are installed under $BASEDIR/bin which we have added to our PATH
+# they are installed under $BASEDIR/bin which we have added to our PATH above
+
+if [ "`uname | grep SunOS`" ]; then
+  build_tar 1.27
+  build_make 4.1
+  build_zlib 1.2.8
+  build_binutils 2.25
+  # coreutils 8.x broken on solaris
+  build_coreutils 7.6
+  if [ "`cmake --version | grep 'version 2'`" ]; then
+    build_cmake 3.3 3.3.2
+  elif [ "`cmake --version | grep 'version 3.2'`" ]; then
+    build_cmake 3.3 3.3.2
+  fi
+fi
 
 if [ ! "`command -v curl`" ]; then
   build_curl 7.26.0
@@ -821,18 +835,6 @@ fi
 
 if [ ! "`command -v bison`" ]; then
   build_bison 2.6.1
-fi
-
-if [ "`uname | grep SunOS`" ]; then
-  build_zlib 1.2.8
- # build_binutils 
- # build_make 
-  #built_tar
-  if [ "`cmake --version | grep 'version 2'`" ]; then
-    build_cmake 3.3 3.3.2
-  elif [ "`cmake --version | grep 'version 3.2'`" ]; then
-    build_cmake 3.3 3.3.2
-  fi
 fi
 
 if [ ! "`command -v cmake`" ]; then
@@ -927,7 +929,6 @@ build_freetype 2.5.0.1 --without-png
 build_libxml2 2.9.1
 build_fontconfig 2.11.1 --with-add-fonts=/usr/X11R6/lib/X11/fonts,/usr/local/share/fonts
 build_ragel 6.9
-exit
 build_harfbuzz 0.9.23 --with-glib=yes
 
 echo "OpenSCAD dependencies built and installed to " $BASEDIR

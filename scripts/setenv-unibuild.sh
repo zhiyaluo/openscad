@@ -115,8 +115,8 @@ setenv_sunos()
  PKG_CONFIG_PATH=$PKG_CONFIG_PATH:/usr/lib/pkgconfig
  TARCMD=gtar
  MAKECMD=gmake
- CSWBIN=/opt/csw/sparc-sun-solaris2.10/bin/
- PATH=$CSWBIN:$PATH
+ #CSWBIN=/opt/csw/sparc-sun-solaris2.10/bin/
+ #PATH=$CSWBIN:$PATH
 
  export PKG_CONFIG_PATH
  export CC
@@ -131,7 +131,7 @@ setenv_sunos()
  echo PKG_CONFIG_PATH modified: $PKG_CONFIG_PATH
  echo TARCMD has been modified: $TARCMD
  echo MAKECMD has been modified: $MAKECMD
- echo PATH has been modified w $CSWBIN
+ #echo PATH has been modified w $CSWBIN
 }
 
 clean_note()
