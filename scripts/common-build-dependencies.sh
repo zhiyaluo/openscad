@@ -198,6 +198,7 @@ build_harfbuzz()
   gzip -cd "harfbuzz-$version.tar.gz" | tar -xf -
   cd "harfbuzz-$version"
   PKG_CONFIG_PATH="$DEPLOYDIR/lib/pkgconfig"
+  export PKG_CONFIG_PATH
   # disable doc directories as they make problems on Mac OS Build
   sed -e "s/SUBDIRS = src util test docs/SUBDIRS = src util test/g" Makefile.am > Makefile.am.bak && mv Makefile.am.bak Makefile.am
   sed -e "s/^docs.*$//" configure.ac > configure.ac.bak && mv configure.ac.bak configure.ac
