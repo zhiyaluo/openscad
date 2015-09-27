@@ -585,7 +585,7 @@ build_opencsg()
   echo GLU_INCLUDE $GLU_INCLUDE
 
   if [ "`uname | grep SunOS`" ]; then
-    OPENCSG_QMAKE='echo none'
+    OPENCSG_QMAKE=
     build_opencsg_makefile
     tmp=$version
     version=$tmp
@@ -601,22 +601,26 @@ build_opencsg()
     OPENCSG_QMAKE=qmake
   else
     echo qmake not found... using standard OpenCSG makefiles
-    OPENCSG_QMAKE='echo none'
+    OPENCSG_QMAKE=
     build_opencsg_makefile
     tmp=$version
     version=$tmp
   fi
 
-  if [ "` echo $OPENCSG_QMAKE | grep none`" ]; then
+  if [ $OPENCSG_QMAKE ]; then
     OPENCSG_QMAKE=$OPENCSG_QMAKE' "QMAKE_CXXFLAGS+=-I'$GLU_INCLUDE'"'
   fi
   echo OPENCSG_QMAKE: $OPENCSG_QMAKE
 
   cd $BASEDIR/src/OpenCSG-$version/src
-  $OPENCSG_QMAKE
+  if [ '$OPENCSG_QMAKE' ]; then
+    $OPENCSG_QMAKE
+  fi
 
   cd $BASEDIR/src/OpenCSG-$version
-  $OPENCSG_QMAKE
+  if [ '$OPENCSG_QMAKE' ]; then
+    $OPENCSG_QMAKE
+  fi
 
   $MAKECMD
 
