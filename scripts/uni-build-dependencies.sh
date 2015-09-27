@@ -580,7 +580,11 @@ build_opencsg()
   detect_glu
   GLU_INCLUDE=$detect_glu_include
   if [ ! $detect_glu_result ]; then
+    oldversion=$1
     build_glu 9.0.0
+    version=$oldversion
+    detect_glu
+    GLU_INCLUDE=$detect_glu_include
   fi
   echo GLU_INCLUDE $GLU_INCLUDE
 
