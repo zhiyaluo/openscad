@@ -742,33 +742,6 @@ build_libffi()
   make install
 }
 
-#build_glib2()
-#{
-#  version="$1"
-#  maj_min_version="${version%.*}" #Drop micro#
-#
-#  if [ -e $DEPLOYDIR/lib/glib-2.0 ]; then
-#    echo "glib2 already installed. not building"
-#    return
-#  fi
-#
-# echo "Building glib2 $version..."
-#  cd "$BASEDIR"/src
-#  rm -rf ./"glib-$version"
-#  if [ ! -f "glib-$version.tar.xz" ]; then
-#    echo downloading
-#    curl --insecure -LO "http://ftp.gnome.org/pub/gnome/sources/glib/$maj_min_version/glib-$version.tar.xz"
-#  fi
-#  tar xJf "glib-$version.tar.xz"
-#  cd "glib-$version"
-
-#  ./configure --disable-gtk-doc --disable-man --prefix="$DEPLOYDIR" CFLAGS="-I$DEPLOYDIR/include" LDFLAGS="-L$DEPLOYDIR/lib"
-#  make -j$NUMCPU
-#  make install
-#}
-
-## end of glib2 stuff
-
 # this section allows 'out of tree' builds, as long as the system has
 # the 'dirname' command installed
 
@@ -814,7 +787,7 @@ mkdir -p $SRCDIR $DEPLOYDIR
 # they are installed under $BASEDIR/bin which we have added to our PATH above
 
 if [ "`uname | grep SunOS`" ]; then
-  # on solaris, the default tools are all broken. 
+  # on solaris, many of the default tools are incompatible with our dependencies
   # CSW can help, but if you dont have root...
   build_tar 1.27
   build_make 4.1
@@ -828,6 +801,7 @@ if [ "`uname | grep SunOS`" ]; then
   build_automake 1.14
   build_flex 2.5.39
   build_bison 3.0
+  build_git 2.4.9
   if [ "`cmake --version | grep 'version 2'`" ]; then
     build_cmake 3.3 3.3.2
   elif [ "`cmake --version | grep 'version 3.2'`" ]; then

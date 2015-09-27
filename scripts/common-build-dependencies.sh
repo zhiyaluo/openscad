@@ -443,11 +443,34 @@ build_flex()
   cd "$BASEDIR"/src
   rm -rf "flex-$version"
   if [ ! -f "flex-$version.tar.gz" ]; then
-    curl --insecure -LO http://downloads.sourceforge.net/project/flex/flex-2.5.39.tar.xz
+    curl --insecure -LO http://downloads.sourceforge.net/project/flex/flex-$version.tar.xz
   fi
   xz -cd "flex-$version.tar.xz" | tar xf -
   cd "flex-$version"
   ./configure --disable-silent-rules --prefix="$DEPLOYDIR"
   make -j$NUMCPU
   make install
+}
+
+
+build_git()
+{
+  version=$1
+
+  if [ -e $DEPLOYDIR/bin/git ]; then
+    echo "git already installed. not building"
+    return
+  fi
+
+  echo "Building git $version..."
+  cd "$BASEDIR"/src
+  rm -rf "git-$version"
+  if [ ! -f "git-$version.tar.gz" ]; then
+    curl --insecure -LO https://www.kernel.org/pub/software/scm/git/git-$version.tar.xz
+  fi
+  xz -cd "git-$version.tar.xz" | tar xf -
+  cd "git-$version"
+  LDFLAGS=-lintl ./configure --prefix="$DEPLOYDIR" --with-sane-tool-path=$DEPLOYDIR/bin
+  LDFLAGS=-lintl make V=1
+  make V=1 install
 }
