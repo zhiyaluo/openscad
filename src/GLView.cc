@@ -512,15 +512,15 @@ void GLView::showScalemarkers(const Color4f &col)
 	glColor3f(col[0], col[1], col[2]);
 
 	// determine the log value to provide proportional tics
-	int log_l = (int)log10(l);
+	int log_l = static_cast<int>(log10(l));
 
 	// j represents the increment for each minor tic
 	double j = 10;
 	// deal with 0 log values
 	if (l < 1.5){
-		j = pow(10,log_l-2);
+		j = pow(10,static_cast<double>(log_l-2));
 	} else {
-		j = pow(10,log_l-1);
+		j = pow(10,static_cast<double>(log_l-1));
 	}
 
 	int size_div_sm = 60;       // divisor for l to determine minor tic size

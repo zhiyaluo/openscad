@@ -665,22 +665,23 @@ build_eigen()
     mv $version.tar.bz2 eigen-$version.tar.bz2
   fi
   bzip2 -cd eigen-$version.tar.bz2 | $TARCMD xf -
+
   ln -s ./$EIGENDIR eigen-$version
   cd eigen-$version
-  rm -rf $DEPLOYDIR/include/eigen3
-  if [ ! -e $DEPLOYDIR/include ]; then
-    mkdir $DEPLOYDIR/include
-  fi
-  if [ ! -e $DEPLOYDIR/include/eigen3 ]; then
-    mkdir $DEPLOYDIR/include/eigen3
-  fi
-  mv ./Eigen $DEPLOYDIR/include/eigen3/
-  # Eigen's cmake install-to-prefix is broken. 
-  #  mkdir build
-  #  cd build
-  #  cmake -DCMAKE_INSTALL_PREFIX=$DEPLOYDIR -DEIGEN_TEST_NO_OPENGL=1 
-  #  $MAKECMD -j$NUMCPU
-  #  $MAKECMD install
+  #rm -rf $DEPLOYDIR/include/eigen3
+  #if [ ! -e $DEPLOYDIR/include ]; then
+  #  mkdir $DEPLOYDIR/include
+  #fi
+  #if [ ! -e $DEPLOYDIR/include/eigen3 ]; then
+  #  mkdir $DEPLOYDIR/include/eigen3
+  #fi
+  #mv ./Eigen $DEPLOYDIR/include/eigen3/
+  #Eigen's cmake install-to-prefix is broken if pkgconfig is enabled. 
+  mkdir build
+  cd build
+  cmake -DCMAKE_INSTALL_PREFIX=$DEPLOYDIR -DEIGEN_TEST_NO_OPENGL=1 -DEIGEN_BUILD_PKGCONFIG=off ..
+  $MAKECMD
+  $MAKECMD install
 }
 
 build_pkgconfig()
