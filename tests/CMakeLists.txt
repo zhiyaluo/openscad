@@ -938,6 +938,7 @@ endfunction()
 #                        [EXPECTEDDIR <shared dir>] SUFFIX <suffix> FILES <test files>)
 #
 find_package(PythonInterp)
+set(PYTHON_EXECUTABLE /opt/csw/bin/python2)
 function(add_cmdline_test TESTCMD_BASENAME)
   cmake_parse_arguments(TESTCMD "" "EXE;SCRIPT;SUFFIX;EXPECTEDDIR" "FILES;ARGS" ${ARGN})
 

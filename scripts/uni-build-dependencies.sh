@@ -791,7 +791,6 @@ if [ "`uname | grep SunOS`" ]; then
   # CSW can help, but if you dont have root...
   build_tar 1.27
   build_make 4.1
-  build_glibc 2.22
   build_zlib 1.2.8
   build_binutils 2.25
   # coreutils 8.x broken on solaris

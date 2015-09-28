@@ -593,7 +593,7 @@ find_installed_version()
   if [ "`uname | grep SunOS`" ]; then morepaths=/opt/csw ; fi
   if [ "`uname | grep -i netbsd`" ]; then morepaths=/usr/pkg ; fi
   if [ ! $fsv_tmp ]; then
-    for syspath in $OPENSCAD_LIBRARIES "/usr/local" "/opt/local" "/usr" $morepaths; do
+    for syspath in $OPENSCAD_LIBRARIES $morepaths "/usr/local" "/opt/local" "/usr"; do
       if [ -e $syspath ]; then
         debug $depname"_sysver" $syspath
         eval $depname"_sysver" $syspath
