@@ -369,7 +369,10 @@ def to_html(project_name, startdate, tests, enddate, sysinfo, sysid, imgcomparer
                           actual=actual_img,
                           expected=expected_img)
         else:
-            raise TypeError('Unknown test type %r' % test.type)
+            text_test_count += 1
+            templates.add('text_template', 'unknown_tests',
+                          test_name='unknown',
+                          test_log='unknown')
 
     for mf in sorted(makefiles.keys()):
         mfname = mf.strip().lstrip(os.path.sep)

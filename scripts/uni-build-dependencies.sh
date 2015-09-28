@@ -801,6 +801,8 @@ if [ "`uname | grep SunOS`" ]; then
   build_automake 1.14
   build_flex 2.5.39
   build_bison 3.0
+  build_pkgconfig 0.28
+  build_libffi 3.0.13
   build_git 2.4.9
   if [ "`cmake --version | grep 'version 2'`" ]; then
     build_cmake 3.3 3.3.2
