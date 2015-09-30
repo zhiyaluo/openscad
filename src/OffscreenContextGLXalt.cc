@@ -1,10 +1,11 @@
 /*
 
-Create an OpenGL context without creating an OpenGL Window. for Linux.
+Alternate version of OffscreenContextGLX.cc for getting an OpenGL context
+on POSIX systems where the standard OffscreenContextGLX.cc doesn't work
 
 See also
 
-glxgears.c by Brian Paul from mesa-demos (mesa3d.org)
+glxdemo.c and glxgears.c by Brian Paul from mesa-demos (mesa3d.org)
 http://cgit.freedesktop.org/mesa/demos/tree/src/xdemos?id=mesa-demos-8.0.1
 http://www.opengl.org/sdk/docs/man/xhtml/glXIntro.xml
 http://www.mesa3d.org/brianp/sig97/offscrn.htm
@@ -129,10 +130,6 @@ bool create_glx_dummy_window(OffscreenContext &ctx)
    create a dummy X window without showing it. (without 'mapping' it)
    and save information to the ctx.
 
-   This purposely does not use glxCreateWindow, to avoid crashes,
-   "failed to create drawable" errors, and Mesa "WARNING: Application calling 
-   GLX 1.3 function when GLX 1.3 is not supported! This is an application bug!"
-
    This function will alter ctx.openGLContext and ctx.xwindow if successfull
  */
 
@@ -224,106 +221,105 @@ bool create_glx_dummy_window(OffscreenContext &ctx)
 	XFree( fbconfigs );
 
 	return true;
+}
+
+Bool create_glx_dummy_context(OffscreenContext &ctx);
+
+OffscreenContext *create_offscreen_context(int w, int h)
+{
+	OffscreenContext *ctx = new OffscreenContext;
+	offscreen_context_init( *ctx, w, h );
+
+	// before an FBO can be setup, a GLX context must be created
+	// this call alters ctx->xDisplay and ctx->openGLContext 
+	//  and ctx->xwindow if successfull
+	if (!create_glx_dummy_context( *ctx )) {
+		delete ctx;
+		return NULL;
 	}
 
-	Bool create_glx_dummy_context(OffscreenContext &ctx);
+	return create_offscreen_context_common( ctx );
+}
 
-	OffscreenContext *create_offscreen_context(int w, int h)
-	{
-		OffscreenContext *ctx = new OffscreenContext;
-		offscreen_context_init( *ctx, w, h );
-
-		// before an FBO can be setup, a GLX context must be created
-		// this call alters ctx->xDisplay and ctx->openGLContext 
-		//  and ctx->xwindow if successfull
-		if (!create_glx_dummy_context( *ctx )) {
-			delete ctx;
-			return NULL;
-		}
-
-		return create_offscreen_context_common( ctx );
+bool teardown_offscreen_context(OffscreenContext *ctx)
+{
+	if (ctx) {
+		fbo_unbind(ctx->fbo);
+		fbo_delete(ctx->fbo);
+		XDestroyWindow( ctx->xdisplay, ctx->xwindow );
+		glXDestroyContext( ctx->xdisplay, ctx->openGLContext );
+		XCloseDisplay( ctx->xdisplay );
+		return true;
 	}
+	return false;
+}
 
-	bool teardown_offscreen_context(OffscreenContext *ctx)
-	{
-		if (ctx) {
-			fbo_unbind(ctx->fbo);
-			fbo_delete(ctx->fbo);
-			XDestroyWindow( ctx->xdisplay, ctx->xwindow );
-			glXDestroyContext( ctx->xdisplay, ctx->openGLContext );
-			XCloseDisplay( ctx->xdisplay );
-			return true;
-		}
-		return false;
-	}
-
-	bool save_framebuffer(OffscreenContext *ctx, std::ostream &output)
-	{
-		glXSwapBuffers(ctx->xdisplay, ctx->xwindow);
-		return save_framebuffer_common(ctx, output);
-	}
+bool save_framebuffer(OffscreenContext *ctx, std::ostream &output)
+{
+	glXSwapBuffers(ctx->xdisplay, ctx->xwindow);
+	return save_framebuffer_common(ctx, output);
+}
 
 #pragma GCC diagnostic ignored "-Waddress"
-	Bool create_glx_dummy_context(OffscreenContext &ctx)
-	{
-		// This will alter ctx.openGLContext and ctx.xdisplay and ctx.xwindow if successfull
-		int major;
-		int minor;
-		Bool result = False;
+Bool create_glx_dummy_context(OffscreenContext &ctx)
+{
+	// This will alter ctx.openGLContext and ctx.xdisplay and ctx.xwindow if successfull
+	int major;
+	int minor;
+	Bool result = False;
 
-		ctx.xdisplay = XOpenDisplay( NULL );
-		if ( ctx.xdisplay == NULL ) {
-			cerr << "Unable to open a connection to the X server\n";
-			return False;
-		}
+	ctx.xdisplay = XOpenDisplay( NULL );
 
+	if ( ctx.xdisplay == NULL ) {
+		cerr << "Unable to open a connection to the X server\n";
+		return False;
+	}
 
-		int attrib[] = { GLX_RGBA,
-			GLX_RED_SIZE, 1,
-			GLX_GREEN_SIZE, 1,
-			GLX_BLUE_SIZE, 1,
-			GLX_DOUBLEBUFFER,
-			None };
-		int scrnum;
-		XSetWindowAttributes attr;
-		unsigned long mask;
-		Window root;
-		Window win;
-		GLXContext ctx;
-		XVisualInfo *visinfo;
+	int attrib[] = { GLX_RGBA,
+		GLX_RED_SIZE, 1,
+		GLX_GREEN_SIZE, 1,
+		GLX_BLUE_SIZE, 1,
+		GLX_DOUBLEBUFFER,
+		None };
+	int scrnum;
+	XSetWindowAttributes attr;
+	unsigned long mask;
+	Window root;
+	Window win;
+	GLXContext ctx;
+	XVisualInfo *visinfo;
 
-		scrnum = DefaultScreen( dpy );
-		root = RootWindow( dpy, scrnum );
+	scrnum = DefaultScreen( dpy );
+	root = RootWindow( dpy, scrnum );
 
-		visinfo = glXChooseVisual( dpy, scrnum, attrib );
-		if (!visinfo) {
-			cerr << "Error: couldn't get an RGB, Double-buffered visual\n";
-			return false;
-		}
+	visinfo = glXChooseVisual( dpy, scrnum, attrib );
+	if (!visinfo) {
+		cerr << "Error: couldn't get an RGB, Double-buffered visual\n";
+		return false;
+	}
+	
+	/* window attributes */
+	attr.background_pixel = 0;
+	attr.border_pixel = 0;
+	attr.colormap = XCreateColormap( dpy, root, visinfo->visual, AllocNone);
+	attr.event_mask = StructureNotifyMask | ExposureMask;
+	mask = CWBackPixel | CWBorderPixel | CWColormap | CWEventMask;
 
-
-   /* window attributes */
-   attr.background_pixel = 0;
-   attr.border_pixel = 0;
-   attr.colormap = XCreateColormap( dpy, root, visinfo->visual, AllocNone);
-   attr.event_mask = StructureNotifyMask | ExposureMask;
-   mask = CWBackPixel | CWBorderPixel | CWColormap | CWEventMask;
-
-   win = XCreateWindow( dpy, root, 0, 0, width, height,
+	win = XCreateWindow( dpy, root, 0, 0, width, height,
                         0, visinfo->depth, InputOutput,
                         visinfo->visual, mask, &attr );
 
-   ctx = glXCreateContext( dpy, visinfo, NULL, True );
-   if (!ctx) {
-      printf("Error: glXCreateContext failed\n");
-      exit(1);
-   }
-
-   glXMakeCurrent( dpy, win, ctx );
-
-   return win;
-
-		if (!result) XCloseDisplay( ctx.xdisplay );
-		return result;
+	ctx = glXCreateContext( dpy, visinfo, NULL, True );
+	if (!ctx) {
+		cerr << "Error: glXCreateContext failed\n");
+		return false;
 	}
+
+	glXMakeCurrent( dpy, win, ctx );
+
+	return win;
+
+	if (!result) XCloseDisplay( ctx.xdisplay );
+	return result;
+}
 
