@@ -693,7 +693,7 @@ build_eigen()
 
 build_pkgconfig()
 {
-  if [ "`command -v pkg-config`" ]; then
+  if [ -e $DEPLOYDIR/bin/pkg-config ]; then
     echo "pkg-config already installed. not building"
     return
   fi
@@ -786,6 +786,10 @@ mkdir -p $SRCDIR $DEPLOYDIR
 # this section builds some basic tools, if they are missing or outdated
 # they are installed under $BASEDIR/bin which we have added to our PATH above
 
+if [ ! "`command -v curl`" ]; then
+  build_curl 7.26.0
+fi
+
 if [ "`uname | grep SunOS`" ]; then
   # on solaris, many of the default tools are incompatible with our dependencies
   # CSW can help, but if you dont have root...
@@ -809,10 +813,6 @@ if [ "`uname | grep SunOS`" ]; then
   elif [ "`cmake --version | grep 'version 3.2'`" ]; then
     build_cmake 3.3 3.3.2
   fi
-fi
-
-if [ ! "`command -v curl`" ]; then
-  build_curl 7.26.0
 fi
 
 if [ ! "`command -v bison`" ]; then

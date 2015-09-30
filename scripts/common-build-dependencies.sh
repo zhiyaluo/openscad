@@ -475,5 +475,3 @@ build_git()
   make V=1 install
 }
 
-
-
