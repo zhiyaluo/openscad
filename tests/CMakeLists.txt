@@ -643,7 +643,7 @@ if(APPLE)
 	set(PLATFORMUTILS_SOURCE "PlatformUtils-mac.mm" CACHE TYPE STRING)
 elseif(UNIX)
 	message(STATUS "Offscreen OpenGL Context - using Unix GLX")
-	set(OFFSCREEN_CTX_SOURCE "OffscreenContextGLX.cc" CACHE TYPE STRING)
+	set(OFFSCREEN_CTX_SOURCE "OffscreenContextGLX.cc")
 	set(OFFSCREEN_IMGUTILS_SOURCE "imageutils-lodepng.cc" CACHE TYPE STRING)
 	set(PLATFORMUTILS_SOURCE "PlatformUtils-posix.cc" CACHE TYPE STRING)
 	# X11 needed for Offscreen OpenGL on current Un*x, see github issue 1355
@@ -653,6 +653,11 @@ elseif(WIN32)
 	set(OFFSCREEN_CTX_SOURCE "OffscreenContextWGL.cc" CACHE TYPE STRING)
 	set(OFFSCREEN_IMGUTILS_SOURCE "imageutils-lodepng.cc" CACHE TYPE STRING)
 	set(PLATFORMUTILS_SOURCE "PlatformUtils-win.cc" CACHE TYPE STRING)
+endif()
+
+if (${CMAKE_SYSTEM_NAME} MATCHES ".*SunOS.*")
+	message(STATUS "Offscreen OpenGL Context - Alternate GLX for Solaris")
+	set(OFFSCREEN_CTX_SOURCE "OffscreenContextGLXalt.cc")
 endif()
 
 set(CORE_SOURCES

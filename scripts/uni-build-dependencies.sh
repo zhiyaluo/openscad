@@ -349,7 +349,7 @@ build_boost()
   elif [ -e ./Makefile ]; then
     BJAMBIN=make
   fi
-  if [ $CXX ]; then
+  if [ "`echo $CXX`" ]; then
     if [ $CXX = "clang++" ]; then
       $BJAMBIN -j$NUMCPU toolset=clang
     fi
@@ -793,21 +793,26 @@ fi
 if [ "`uname | grep SunOS`" ]; then
   # on solaris, many of the default tools are incompatible with our dependencies
   # CSW can help, but if you dont have root...
-  build_tar 1.27
-  build_make 4.1
-  build_zlib 1.2.8
-  build_binutils 2.25
+  #build_tar 1.27
+  if [ ! -e $DEPLOYDIR/bin ]; then
+    mkdir $DEPLOYDIR/bin
+  fi
+  cp /opt/csw/bin/gtar $DEPLOYDIR/bin/tar
+  cp /opt/csw/bin/gmake $DEPLOYDIR/bin/make
+  #build_make 4.1
+  #build_zlib 1.2.8
+  #build_binutils 2.25
   # coreutils 8.x broken on solaris
-  build_coreutils 7.6
+  #build_coreutils 7.6
   # libtool, autoconf, automake are for harfbuzz
-  build_libtool 2.4.5
-  build_autoconf 2.68
-  build_automake 1.14
-  build_flex 2.5.39
-  build_bison 3.0
-  build_pkgconfig 0.28
-  build_libffi 3.0.13
-  build_git 2.4.9
+  #build_libtool 2.4.5
+  #build_autoconf 2.68
+  #build_automake 1.14
+  #build_flex 2.5.39
+  #build_bison 3.0
+  #build_pkgconfig 0.28
+  #build_libffi 3.0.13
+  #build_git 2.4.9
   if [ "`cmake --version | grep 'version 2'`" ]; then
     build_cmake 3.3 3.3.2
   elif [ "`cmake --version | grep 'version 3.2'`" ]; then
@@ -895,22 +900,22 @@ fi
 # 
 # Some of these are defined in scripts/common-build-dependencies.sh
 
-build_gmp 5.0.5
-build_mpfr 3.1.1
+#build_gmp 5.0.5
+#build_mpfr 3.1.1
 build_eigen 3.2.2
 build_boost 1.56.0
 # NB! For CGAL, also update the actual download URL in the function
 build_cgal 4.4
 build_glew 1.13.0
 build_opencsg 1.3.2
-build_gettext 0.18.3.1
-build_glib2 2.46.0
+#build_gettext 0.18.3.1
+#build_glib2 2.46.0
 
 # the following are only needed for text()
-build_freetype 2.5.0.1 --without-png
-build_libxml2 2.9.1
-build_fontconfig 2.11.1 --with-add-fonts=/usr/X11R6/lib/X11/fonts,/usr/local/share/fonts
-build_ragel 6.9
-build_harfbuzz 1.0.3 --with-glib=yes
+#build_freetype 2.5.0.1 --without-png
+#build_libxml2 2.9.1
+#build_fontconfig 2.11.1 --with-add-fonts=/usr/X11R6/lib/X11/fonts,/usr/local/share/fonts
+#build_ragel 6.9
+#build_harfbuzz 1.0.3 --with-glib=yes
 
 echo "OpenSCAD dependencies built and installed to " $BASEDIR

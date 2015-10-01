@@ -66,6 +66,7 @@ struct OffscreenContext
 
 void offscreen_context_init(OffscreenContext &ctx, int width, int height)
 {
+	PRINTD("offscreen ctx init");
 	ctx.width = width;
 	ctx.height = height;
 	ctx.openGLContext = NULL;
@@ -93,6 +94,7 @@ string get_os_info()
 
 string offscreen_context_getinfo(OffscreenContext *ctx)
 {
+	PRINTD("offscreen context info");
 	assert(ctx);
 
 	if (!ctx->xdisplay)
@@ -126,6 +128,7 @@ static int XCreateWindow_error(Display *dpy, XErrorEvent *event)
 
 bool create_glx_dummy_window(OffscreenContext &ctx)
 {
+	PRINTD("create glx dummy window");
 /*
    create a dummy X window without showing it. (without 'mapping' it)
    and save information to the ctx.
@@ -133,7 +136,7 @@ bool create_glx_dummy_window(OffscreenContext &ctx)
    This function will alter ctx.openGLContext and ctx.xwindow if successfull
  */
 
-	int attributes[] = {
+/*	int attributes[] = {
 		GLX_DRAWABLE_TYPE, GLX_WINDOW_BIT | GLX_PIXMAP_BIT | GLX_PBUFFER_BIT, //support all 3, for OpenCSG
 		GLX_RENDER_TYPE,   GLX_RGBA_BIT,
 		GLX_RED_SIZE, 8,
@@ -146,71 +149,90 @@ bool create_glx_dummy_window(OffscreenContext &ctx)
 		None
 	};
 
+*/
+
+
+	int attribs[64];
+	int i=0;
+   /* Singleton attributes. */
+   attribs[i++] = GLX_RGBA;
+   attribs[i++] = GLX_DOUBLEBUFFER;
+
+   /* Key/value attributes. */
+   attribs[i++] = GLX_RED_SIZE;
+   attribs[i++] = 1;
+   attribs[i++] = GLX_GREEN_SIZE;
+   attribs[i++] = 1;
+   attribs[i++] = GLX_BLUE_SIZE;
+   attribs[i++] = 1;
+   attribs[i++] = GLX_DEPTH_SIZE;
+   attribs[i++] = 1;
+
+   attribs[i++] = None;
+
+
+
+	int scrnum;
+	XSetWindowAttributes attr;
+	unsigned long mask;
+	Window root;
+	Window xWin;
+	XVisualInfo *visinfo;
 	Display *dpy = ctx.xdisplay;
 
-	int num_returned = 0;
-	GLXFBConfig *fbconfigs = glXChooseFBConfig( dpy, DefaultScreen(dpy), attributes, &num_returned );
-	if ( fbconfigs == NULL ) {
-		cerr << "glXChooseFBConfig failed\n";
-		return false;
-	}
+	scrnum = DefaultScreen( dpy );
+	root = RootWindow( dpy, scrnum );
+	PRINTDB("dpy %i",dpy);
+	PRINTDB("defaultscreen %i",scrnum);
+	PRINTDB("rootwindow %i",root);
 
-	XVisualInfo *visinfo = glXGetVisualFromFBConfig( dpy, fbconfigs[0] );
-	if ( visinfo == NULL ) {
-		cerr << "glXGetVisualFromFBConfig failed\n";
-		XFree( fbconfigs );
-		return false;
-	}
-
-	// can't depend on xWin==NULL at failure. use a custom Xlib error handler instead.
-	original_xlib_handler = XSetErrorHandler( XCreateWindow_error );
-
-	Window root = DefaultRootWindow( dpy );
-	XSetWindowAttributes xwin_attr;
 	int width = ctx.width;
 	int height = ctx.height;
-	xwin_attr.background_pixmap = None;
-	xwin_attr.background_pixel = 0;
-	xwin_attr.border_pixel = 0;
-	xwin_attr.colormap = XCreateColormap( dpy, root, visinfo->visual, AllocNone);
-	xwin_attr.event_mask = StructureNotifyMask | ExposureMask | KeyPressMask;
-	unsigned long int mask = CWBackPixel | CWBorderPixel | CWColormap | CWEventMask;
 
-	Window xWin = XCreateWindow( dpy, root, 0, 0, width, height,
-			0, visinfo->depth, InputOutput,
-			visinfo->visual, mask, &xwin_attr );
+	visinfo = glXChooseVisual( dpy, scrnum, attribs );
+	if (!visinfo) {
+		cerr << "Error: couldn't get an RGB, Double-buffered visual\n";
+		return false;
+	}
+	
+	/* window attributes */
+	attr.background_pixel = 0;
+	attr.border_pixel = 0;
+	attr.colormap = XCreateColormap( dpy, root, visinfo->visual, AllocNone);
+	attr.event_mask = StructureNotifyMask | ExposureMask;
+	mask = CWBackPixel | CWBorderPixel | CWColormap | CWEventMask;
 
-	// Window xWin = XCreateSimpleWindow( dpy, DefaultRootWindow(dpy), 0,0,42,42, 0,0,0 );
+	original_xlib_handler = XSetErrorHandler( XCreateWindow_error );
+
+	xWin = XCreateWindow( dpy, root, 0, 0, width, height,
+                        0, visinfo->depth, InputOutput,
+                        visinfo->visual, mask, &attr );
 
 	XSync( dpy, false );
 	if ( XCreateWindow_failed ) {
 		XFree( visinfo );
-		XFree( fbconfigs );
 		return false;
 	}
 	XSetErrorHandler( original_xlib_handler );
 
-	// Most programs would call XMapWindow here. But we don't, to keep the window hidden
-	// XMapWindow( dpy, xWin );
-
-	GLXContext context = glXCreateNewContext( dpy, fbconfigs[0], GLX_RGBA_TYPE, NULL, True );
+	GLXContext context = glXCreateContext( dpy, visinfo, NULL, True );
 	if ( context == NULL ) {
-		cerr << "glXCreateNewContext failed\n";
+		cerr << "Error: glXCreateContext failed\n";
 		XDestroyWindow( dpy, xWin );
 		XFree( visinfo );
-		XFree( fbconfigs );
 		return false;
 	}
 
-	//GLXWindow glxWin = glXCreateWindow( dpy, fbconfigs[0], xWin, NULL );
+	// leave out to make offscreen window
+ 	PRINTD("xmapwindow");
+	XMapWindow( dpy, xWin );
 
-	if (!glXMakeContextCurrent( dpy, xWin, xWin, context )) {
-		//if (!glXMakeContextCurrent( dpy, glxWin, glxWin, context )) {
-		cerr << "glXMakeContextCurrent failed\n";
+	PRINTD("glxmakecurrent");
+	if (!glXMakeCurrent( dpy, xWin, context )) {
+		cerr << "Error: glXMakeCurrent failed\n";
 		glXDestroyContext( dpy, context );
 		XDestroyWindow( dpy, xWin );
 		XFree( visinfo );
-		XFree( fbconfigs );
 		return false;
 	}
 
@@ -218,7 +240,6 @@ bool create_glx_dummy_window(OffscreenContext &ctx)
 	ctx.xwindow = xWin;
 
 	XFree( visinfo );
-	XFree( fbconfigs );
 
 	return true;
 }
@@ -227,6 +248,7 @@ Bool create_glx_dummy_context(OffscreenContext &ctx);
 
 OffscreenContext *create_offscreen_context(int w, int h)
 {
+	PRINTD("create offscreen context");
 	OffscreenContext *ctx = new OffscreenContext;
 	offscreen_context_init( *ctx, w, h );
 
@@ -243,6 +265,7 @@ OffscreenContext *create_offscreen_context(int w, int h)
 
 bool teardown_offscreen_context(OffscreenContext *ctx)
 {
+	PRINTD("teardown offscreen context");
 	if (ctx) {
 		fbo_unbind(ctx->fbo);
 		fbo_delete(ctx->fbo);
@@ -256,6 +279,7 @@ bool teardown_offscreen_context(OffscreenContext *ctx)
 
 bool save_framebuffer(OffscreenContext *ctx, std::ostream &output)
 {
+	PRINTD("save_framebuffer");
 	glXSwapBuffers(ctx->xdisplay, ctx->xwindow);
 	return save_framebuffer_common(ctx, output);
 }
@@ -263,11 +287,13 @@ bool save_framebuffer(OffscreenContext *ctx, std::ostream &output)
 #pragma GCC diagnostic ignored "-Waddress"
 Bool create_glx_dummy_context(OffscreenContext &ctx)
 {
+	PRINTD("create_glx_dummy_context");
 	// This will alter ctx.openGLContext and ctx.xdisplay and ctx.xwindow if successfull
 	int major;
 	int minor;
 	Bool result = False;
 
+	PRINTD("xopendisplay");
 	ctx.xdisplay = XOpenDisplay( NULL );
 
 	if ( ctx.xdisplay == NULL ) {
@@ -275,51 +301,10 @@ Bool create_glx_dummy_context(OffscreenContext &ctx)
 		return False;
 	}
 
-	int attrib[] = { GLX_RGBA,
-		GLX_RED_SIZE, 1,
-		GLX_GREEN_SIZE, 1,
-		GLX_BLUE_SIZE, 1,
-		GLX_DOUBLEBUFFER,
-		None };
-	int scrnum;
-	XSetWindowAttributes attr;
-	unsigned long mask;
-	Window root;
-	Window win;
-	GLXContext ctx;
-	XVisualInfo *visinfo;
-
-	scrnum = DefaultScreen( dpy );
-	root = RootWindow( dpy, scrnum );
-
-	visinfo = glXChooseVisual( dpy, scrnum, attrib );
-	if (!visinfo) {
-		cerr << "Error: couldn't get an RGB, Double-buffered visual\n";
-		return false;
-	}
-	
-	/* window attributes */
-	attr.background_pixel = 0;
-	attr.border_pixel = 0;
-	attr.colormap = XCreateColormap( dpy, root, visinfo->visual, AllocNone);
-	attr.event_mask = StructureNotifyMask | ExposureMask;
-	mask = CWBackPixel | CWBorderPixel | CWColormap | CWEventMask;
-
-	win = XCreateWindow( dpy, root, 0, 0, width, height,
-                        0, visinfo->depth, InputOutput,
-                        visinfo->visual, mask, &attr );
-
-	ctx = glXCreateContext( dpy, visinfo, NULL, True );
-	if (!ctx) {
-		cerr << "Error: glXCreateContext failed\n");
-		return false;
-	}
-
-	glXMakeCurrent( dpy, win, ctx );
-
-	return win;
+	result = create_glx_dummy_window( ctx );
 
 	if (!result) XCloseDisplay( ctx.xdisplay );
+
 	return result;
 }
 
