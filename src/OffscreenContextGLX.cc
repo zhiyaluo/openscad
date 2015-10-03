@@ -307,7 +307,7 @@ Bool create_glx_dummy_context(OffscreenContext &ctx)
 	// This will alter ctx.openGLContext and ctx.xdisplay and ctx.xwindow if successfull
 	int major;
 	int minor;
-	Bool result = False;
+	bool result = false;
 
 	PRINTD("XOpenDisplay");
 	ctx.xdisplay = XOpenDisplay( NULL );
@@ -323,9 +323,7 @@ Bool create_glx_dummy_context(OffscreenContext &ctx)
 		glXQueryVersion(ctx.xdisplay, &major, &minor);
 	if (PlatformUtils::crashed()) {
 		PRINT("GLX init crash. Signal trapped\n");
-		major = minor = 0;	
-		}
-	if ( major==1 && minor<=2 && glXGetVisualFromFBConfig==NULL ) {
+	} else if ( major==1 && minor<=2 && glXGetVisualFromFBConfig==NULL ) {
 		PRINT("Error: GLX version 1.3 functions missing. ");
 		PRINTB("Your GLX version: %i.%i", major % minor );
 	} else {
