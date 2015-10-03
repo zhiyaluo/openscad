@@ -189,12 +189,12 @@ static void handle_crash(int sig)
 	oscad_crashflag = 1;
 }
 
-bool crashed()
+bool PlatformUtils::crashed()
 {
 	return (oscad_crashflag>0);
 }
 
-void suspend_crashsig()
+void PlatformUtils::suspend_crashsig()
 {	
         PRINTD("suspend_crashsig posix");
         memset(&oscad_oldact, '\0', sizeof(oscad_oldact));
@@ -205,7 +205,7 @@ void suspend_crashsig()
 		PRINTD("sigaction() failed, cannot block SIGSEGV");
 }
 
-void restore_crashsig()
+void PlatformUtils::restore_crashsig()
 {
         if (sigaction_status>0) {
 	        PRINTD("restore_crashsig posix");

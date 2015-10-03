@@ -81,12 +81,12 @@ std::string get_os_info()
 	std::stringstream out;
 
 	if (uname(&u) < 0)
-		out << "OS info: unknown, uname() error\n");
+		out << "OS info: unknown, uname() error\n";
 	else {
 		out << "OS info: "
 		    << u.sysname << " "
 		    << u.release << " "
-		    << u.version << "\n");
+		    << u.version << "\n";
 		out << "Machine: " << u.machine;
 	}
 	return out.str();
@@ -120,12 +120,15 @@ static XErrorHandler original_xlib_handler = (XErrorHandler) NULL;
 static bool XCreateWindow_failed = false;
 static int XCreateWindow_error(Display *dpy, XErrorEvent *event)
 {
-	PRINT("XCreateWindow failed: XID: " << event->resourceid
+	std::stringstream out;
+	out << "XCreateWindow failed: XID: " << event->resourceid
 	     << " request: " << (int)event->request_code
-	     << " minor: " << (int)event->minor_code << "\n");
+	     << " minor: " << (int)event->minor_code << "\n";
 	char description[1024];
 	XGetErrorText( dpy, event->error_code, description, 1023 );
-	PRINT(" error message: " << description << "\n");
+	PRINTB("ERROR: %s",out.str());
+	out << std::string(description);
+	PRINTB("ERROR: %s",out.str());
 	XCreateWindow_failed = true;
 	return 0;
 }
@@ -160,7 +163,7 @@ bool create_glx_dummy_window(OffscreenContext &ctx)
 
 	int num_returned = 0;
 	GLXFBConfig *fbconfigs = glXChooseFBConfig( dpy, DefaultScreen(dpy), attributes, &num_returned );
-	if (PlatformUtils::crash()) {
+	if (PlatformUtils::crashed()) {
 		PRINT("GLX init crash. Signal trapped\n");
 		fbconfigs = NULL;
 	}
@@ -170,7 +173,7 @@ bool create_glx_dummy_window(OffscreenContext &ctx)
 	}
 
 	XVisualInfo *visinfo = glXGetVisualFromFBConfig( dpy, fbconfigs[0] );
-	if (PlatformUtils::crash()) {
+	if (PlatformUtils::crashed()) {
 		PRINT("GLX init crash. Signal trapped\n");
 		visinfo  = NULL;
 	}
@@ -212,7 +215,7 @@ bool create_glx_dummy_window(OffscreenContext &ctx)
 	XMapWindow( dpy, xWin );
 
 	GLXContext context = glXCreateNewContext( dpy, fbconfigs[0], GLX_RGBA_TYPE, NULL, True );
-	if (PlatformUtils::crash()) {
+	if (PlatformUtils::crashed()) {
 		PRINT("GLX init crash. Signal trapped\n");
 		context = NULL;
 	}
@@ -235,7 +238,7 @@ bool create_glx_dummy_window(OffscreenContext &ctx)
 		XFree( fbconfigs );
 		return false;
 	}
-	if (PlatformUtils::crash()) {
+	if (PlatformUtils::crashed()) {
 		PRINT("GLX init crash. Signal trapped\n");
 		glXDestroyContext( dpy, context );
 		XDestroyWindow( dpy, xWin );
@@ -292,8 +295,6 @@ bool teardown_offscreen_context(OffscreenContext *ctx)
 bool save_framebuffer(OffscreenContext *ctx, std::ostream &output)
 {
 	glXSwapBuffers(ctx->xdisplay, ctx->xwindow);
-	if (PlatformUtils::crash())
-		PRINT("GLX init crash. Signal trapped\n");
 	return save_framebuffer_common(ctx, output);
 }
 
@@ -315,13 +316,13 @@ Bool create_glx_dummy_context(OffscreenContext &ctx)
 	// also check to see if GLX 1.3 functions exist
 
 	glXQueryVersion(ctx.xdisplay, &major, &minor);
-	if (PlatformUtils::crash()) {
+	if (PlatformUtils::crashed()) {
 		PRINT("GLX init crash. Signal trapped\n");
 		major = minor = 0;	
 	}
 	if ( major==1 && minor<=2 && glXGetVisualFromFBConfig==NULL ) {
-		PRINT("Error: GLX version 1.3 functions missing. "
-			<< "Your GLX version: " << major << "." << minor << endl;
+		PRINT("Error: GLX version 1.3 functions missing. ");
+		PRINTB("Your GLX version: %i.%i", major % minor );
 	} else {
 		result = create_glx_dummy_window(ctx);
 	}

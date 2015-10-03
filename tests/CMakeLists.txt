@@ -605,8 +605,8 @@ find_library(Intl_LIBRARY "intl")
 
 if (${CMAKE_SYSTEM_NAME} MATCHES ".*SunOS.*")
   message(STATUS "solaris intl ${INTLHINT}")
-  set(Intl_INCLUDE_DIR "/usr/include")
-  set(Intl_LIBRARY "/usr/lib/libintl.so")
+  set(Intl_INCLUDE_DIR "/opt/csw/include")
+  set(Intl_LIBRARY "/opt/csw/lib/libintl.so.8")
 endif()
 
 message(STATUS "LibIntl include: ${Intl_INCLUDE_DIR}")
@@ -670,6 +670,8 @@ elseif(WIN32)
 	set(OFFSCREEN_CTX_SOURCE "OffscreenContextWGL.cc" CACHE TYPE STRING)
 	set(OFFSCREEN_IMGUTILS_SOURCE "imageutils-lodepng.cc" CACHE TYPE STRING)
 	set(PLATFORMUTILS_SOURCE "PlatformUtils-win.cc" CACHE TYPE STRING)
+else()
+	message(FATAL_ERROR "unknkown platform")
 endif()
 
 if (${CMAKE_SYSTEM_NAME} MATCHES ".*SunOS.*")
@@ -813,7 +815,7 @@ target_link_libraries(tests-common tests-core)
 
 add_library(tests-cgal STATIC ${CGAL_SOURCES})
 set_target_properties(tests-cgal PROPERTIES COMPILE_FLAGS "${ENABLE_OPENCSG_FLAG} -DENABLE_CGAL ${CGAL_CXX_FLAGS_INIT}")
-target_link_libraries(tests-cgal tests-common ${CGAL_LIBRARY} ${CGAL_3RD_PARTY_LIBRARIES} ${GMP_LIBRARIES} ${MPFR_LIBRARIES} -lintl)
+target_link_libraries(tests-cgal tests-common ${CGAL_LIBRARY} ${CGAL_3RD_PARTY_LIBRARIES} ${GMP_LIBRARIES} ${MPFR_LIBRARIES})
 
 #
 # Create non-CGAL tests
@@ -853,14 +855,16 @@ target_link_libraries(cgalcachetest tests-cgal ${GLEW_LIBRARY} ${OPENCSG_LIBRARY
 # someone needs that binary.
 #
 if (NOGUI)
+ set(NOGUI_LINKFLAGS "-t")
  add_executable(openscad_nogui ../src/openscad.cc)
- set_target_properties(openscad_nogui PROPERTIES COMPILE_FLAGS "-fno-strict-aliasing -DEIGEN_DONT_ALIGN ${ENABLE_OPENCSG_FLAG} -DENABLE_CGAL ${CGAL_CXX_FLAGS_INIT}")
- target_link_libraries(openscad_nogui tests-offscreen tests-cgal ${GLEW_LIBRARY} ${OPENCSG_LIBRARY} ${APP_SERVICES_LIBRARY} ${LIBINTL_LIBRARY})
+ set_target_properties(openscad_nogui PROPERTIES COMPILE_FLAGS "-fno-strict-aliasing -DEIGEN_DONT_ALIGN ${ENABLE_OPENCSG_FLAG} -DENABLE_CGAL ${CGAL_CXX_FLAGS_INIT}" LINK_FLAGS ${NOGUI_LINKFLAGS})
+ target_link_libraries(openscad_nogui tests-offscreen tests-cgal ${GLEW_LIBRARY} ${OPENCSG_LIBRARY} ${APP_SERVICES_LIBRARY} ${Intl_LIBRARY})
 endif()
 
 #
 # GUI binary tests
 #
+
 if(EXISTS "$ENV{OPENSCAD_BINARY}")
   set(OPENSCAD_BINPATH "$ENV{OPENSCAD_BINARY}")
 elseif(APPLE)
@@ -879,8 +883,16 @@ if(EXISTS "${OPENSCAD_BINPATH}")
   message(STATUS "Found OpenSCAD binary: ${OPENSCAD_BINPATH}")
 else()
   message(STATUS "Couldn't find the OpenSCAD binary: ${OPENSCAD_BINPATH}")
-  message(FATAL_ERROR "Please build the OpenSCAD binary and place it here: ${OPENSCAD_BINPATH}" )
+  if(NOT NOGUI)
+    message(FATAL_ERROR "Please build the OpenSCAD binary and place it here: ${OPENSCAD_BINPATH}" )
+  endif()
 endif()
+
+if(NOGUI)
+  set(OPENSCAD_BINPATH ${CMAKE_CURRENT_BINARY_DIR}/openscad_nogui)
+  message(STATUS "-DNOGUI, will build OpenSCAD binary: ${OPENSCAD_BINPATH}")
+endif()
+
 
 #
 # Tags tests as disabled. This is more convenient than removing them manually
