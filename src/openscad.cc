@@ -191,16 +191,19 @@ void localization_init() {
 	fs::path po_dir(PlatformUtils::resourcePath("locale"));
 	std::string locale_path(po_dir.string());
 	PRINTDB("locale path %s",locale_path);
-	if (fs::is_directory(locale_path)) {
-		PlatformUtils::suspend_crashsig(); // gettext tends to crash
-		setlocale(LC_ALL, "");
-		bindtextdomain("openscad", locale_path.c_str());
-		bind_textdomain_codeset("openscad", "UTF-8");
-		textdomain("openscad");
-		PlatformUtils::restore_crashsig();
-	} else {
+	if (!fs::is_directory(locale_path)) {
 		PRINT("Could not initialize localization.");
+		return;
 	}
+	PlatformUtils::suspend_crashsig(); // gettext tends to crash
+	setlocale(LC_ALL, "");
+	if (!PlatformUtils::crashed())
+		bindtextdomain("openscad", locale_path.c_str());
+	if (!PlatformUtils::crashed())
+		bind_textdomain_codeset("openscad", "UTF-8");
+	if (!PlatformUtils::crashed())
+		textdomain("openscad");
+	PlatformUtils::restore_crashsig();
 }
 
 Camera get_camera(po::variables_map vm)

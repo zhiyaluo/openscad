@@ -162,6 +162,7 @@ bool create_glx_dummy_window(OffscreenContext &ctx)
 	Display *dpy = ctx.xdisplay;
 
 	int num_returned = 0;
+	PRINTD("glxChooseFBConfig");
 	GLXFBConfig *fbconfigs = glXChooseFBConfig( dpy, DefaultScreen(dpy), attributes, &num_returned );
 	if (PlatformUtils::crashed()) {
 		PRINT("GLX init crash. Signal trapped\n");
@@ -172,6 +173,7 @@ bool create_glx_dummy_window(OffscreenContext &ctx)
 		return false;
 	}
 
+	PRINTD("glXGetVisualFromFBConfig");
 	XVisualInfo *visinfo = glXGetVisualFromFBConfig( dpy, fbconfigs[0] );
 	if (PlatformUtils::crashed()) {
 		PRINT("GLX init crash. Signal trapped\n");
@@ -214,6 +216,7 @@ bool create_glx_dummy_window(OffscreenContext &ctx)
 	// Most programs would call XMapWindow here. But we don't, to keep the window hidden
 	XMapWindow( dpy, xWin );
 
+	PRINTD("glXCreateNewContext");
 	GLXContext context = glXCreateNewContext( dpy, fbconfigs[0], GLX_RGBA_TYPE, NULL, True );
 	if (PlatformUtils::crashed()) {
 		PRINT("GLX init crash. Signal trapped\n");
@@ -266,7 +269,7 @@ OffscreenContext *create_offscreen_context(int w, int h)
 	// GLX library inits tend to segfault and crash, prevent that
 	PlatformUtils::suspend_crashsig();
 
-	// before an FBO can be setup, a GLX context must be created
+	PRINTD("Creating GLX context, before Framebuffer Object FBO");
 	// this call alters ctx->xDisplay and ctx->openGLContext 
 	//  and ctx->xwindow if successfull
 	if (!create_glx_dummy_context( *ctx )) {
@@ -306,20 +309,22 @@ Bool create_glx_dummy_context(OffscreenContext &ctx)
 	int minor;
 	Bool result = False;
 
+	PRINTD("XOpenDisplay");
 	ctx.xdisplay = XOpenDisplay( NULL );
 	if ( ctx.xdisplay == NULL ) {
 		PRINT("Unable to open a connection to the X server\n");
 		return False;
 	}
 
+	PRINTD("glxQueryVersion");
 	// glxQueryVersion is not always reliable. Use it, but then
 	// also check to see if GLX 1.3 functions exist
-
-	glXQueryVersion(ctx.xdisplay, &major, &minor);
+	if (!PlatformUtils::willcrash())
+		glXQueryVersion(ctx.xdisplay, &major, &minor);
 	if (PlatformUtils::crashed()) {
 		PRINT("GLX init crash. Signal trapped\n");
 		major = minor = 0;	
-	}
+		}
 	if ( major==1 && minor<=2 && glXGetVisualFromFBConfig==NULL ) {
 		PRINT("Error: GLX version 1.3 functions missing. ");
 		PRINTB("Your GLX version: %i.%i", major % minor );

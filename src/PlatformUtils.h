@@ -94,6 +94,7 @@ namespace PlatformUtils {
 	 * then call a problematic function like GLXqueryVersion, then call
 	 * crash() to see if the function crashed, then restore.
          */
+	bool willcrash();
 	void suspend_crashsig();
 	void restore_crashsig();
 	bool crashed();

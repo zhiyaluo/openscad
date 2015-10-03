@@ -13,6 +13,7 @@
 #include "boosty.h"
 
 #include <signal.h>
+#include <setjmp.h>
 
 std::string PlatformUtils::pathSeparatorChar()
 {
@@ -145,7 +146,7 @@ std::string PlatformUtils::sysinfo(bool extended)
 			result += " ";
 			result += osinfo.machine;
     } else {
-			result += "Unknown Linux";
+			result += "Unknown POSIX";
     }
     
     std::string distribution = detectDistribution();
@@ -182,11 +183,19 @@ void PlatformUtils::ensureStdIO(void) {}
 volatile sig_atomic_t oscad_crashflag = 0;
 struct sigaction oscad_oldact,oscad_newact;
 int sigaction_status = 0;
-	
+static sigjmp_buf jmpbuf;
+
 static void handle_crash(int sig)
 {
 	// don't call any functions, it is unreliable inside of a crash
 	oscad_crashflag = 1;
+	siglongjmp( jmpbuf, 0 );
+}
+
+bool PlatformUtils::willcrash()
+{
+	if (sigsetjmp( jmpbuf, 1 )==0) return false;
+	return true;
 }
 
 bool PlatformUtils::crashed()
@@ -197,19 +206,18 @@ bool PlatformUtils::crashed()
 void PlatformUtils::suspend_crashsig()
 {	
         PRINTD("suspend_crashsig posix");
-        memset(&oscad_oldact, '\0', sizeof(oscad_oldact));
-        memset(&oscad_newact, '\0', sizeof(oscad_newact));
+	memset(&oscad_newact, '\0', sizeof(oscad_newact));
         oscad_newact.sa_handler = &handle_crash;
         sigaction_status = sigaction(SIGSEGV, &oscad_newact, &oscad_oldact);
         if (sigaction_status<0)
-		PRINTD("sigaction() failed, cannot block SIGSEGV");
+		PRINT("sigaction() failed, cannot block SIGSEGV");
 }
 
 void PlatformUtils::restore_crashsig()
 {
-        if (sigaction_status>0) {
-	        PRINTD("restore_crashsig posix");
-                if (sigaction(SIGSEGV, &oscad_oldact, &oscad_newact)<0)
+        PRINTD("restore_crashsig posix");
+        if (sigaction_status>=0) {
+                if (sigaction(SIGSEGV, &oscad_oldact, NULL)<0)
                         PRINTD("sigaction() could not restore handler");
 	}
 }
