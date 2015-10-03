@@ -150,12 +150,24 @@ mpfr_sysver()
 
 gmp_sysver()
 {
-  gmppaths="`find $1/include -name 'gmp.h' -o -name 'gmp-*.h' 2>/dev/null`"
+  gmppaths=
+  debug gmp search, start $1
+  if [ -e $1/include ]; then
+    debug find $1/include - grep gmp
+    if [ -e $1/include/gmp.h ]; then
+      gmplist=`echo $1/include/gmp*`
+    fi
+    for eachgmp in $gmplist; do
+      gmppaths=$gmppaths' '$eachgmp
+    done
+  fi
   if [ ! "$gmppaths" ]; then
-    debug "gmp_sysver no gmp.h beneath $1"
+    debug "gmp_sysver no gmp.h found beneath $1"
     return
   fi
+  debug candidates: $gmppaths
   for gmpfile in $gmppaths; do
+    debug testing $gmpfile
     if [ "`grep __GNU_MP_VERSION $gmpfile`" ]; then
       gmpmaj=`grep "define  *__GNU_MP_VERSION  *[0-9]*" $gmpfile | awk '{print $3}'`
       gmpmin=`grep "define  *__GNU_MP_VERSION_MINOR  *[0-9]*" $gmpfile | awk '{print $3}'`

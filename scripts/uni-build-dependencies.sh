@@ -445,6 +445,10 @@ build_cgal()
   DEBUGBOOSTFIND=0 # for debugging FindBoost.cmake (not for debugging boost)
   Boost_NO_SYSTEM_PATHS=1
 
+  if [ "`uname | grep SunOS`" ]; then
+    GMPMPFRBOOST=`echo -DGMP_INCLUDE_DIR=/opt/csw/include -DGMP_LIBRARIES=/opt/csw/lib/libgmp.so -DGMPXX_LIBRARIES=/opt/csw/lib/libgmpxx.so -DGMPXX_INCLUDE_DIR=/opt/csw/include -DMPFR_INCLUDE_DIR=/opt/csw/include -DMPFR_LIBRARIES=/opt/csw/lib/libmpfr.so $CGALEXTRAS -DBOOST_LIBRARYDIR=$DEPLOYDIR/lib -DBOOST_INCLUDEDIR=$DEPLOYDIR/include -DBoost_NO_SYSTEM_PATHS=1 `
+  fi
+  
   if [ "`echo $2 | grep use-sys-libs`" ]; then
     echo cmake $PREFIX $CGALEXTRAS $BUILD -DBoost_DEBUG=$DEBUGBOOSTFIND $COMPILER ..
     cmake $PREFIX $CGALEXTRAS $BUILD -DBoost_DEBUG=$DEBUGBOOSTFIND $COMPILER ..
@@ -612,14 +616,14 @@ build_opencsg()
   fi
 
   if [ $OPENCSG_QMAKE ]; then
-    OPENCSG_QMAKE=$OPENCSG_QMAKE' "QMAKE_CXXFLAGS+=-I'$GLU_INCLUDE'"'
+    OPENCSG_QMAKE=$OPENCSG_QMAKE' QMAKE_CXXFLAGS+=-I'$GLU_INCLUDE
     # sparc cpu needs the m64/m32 thing
     if [ "`echo $CC | grep ..m64 `" ]; then
-      OPENCSG_QMAKE=$OPENCSG_QMAKE' "QMAKE_CXXFLAGS+=-m64"'
-      OPENCSG_QMAKE=$OPENCSG_QMAKE' "QMAKE_CXXFLAGS+=-Wunknown-pragmas"'
+      OPENCSG_QMAKE=$OPENCSG_QMAKE' QMAKE_CXXFLAGS+=-m64'
+      OPENCSG_QMAKE=$OPENCSG_QMAKE' QMAKE_CXXFLAGS+=-Wno-unknown-pragmas'
     elif [ "`echo $CC | grep ..m32 `" ]; then
-      OPENCSG_QMAKE=$OPENCSG_QMAKE' "QMAKE_CXXFLAGS+=-m32"'
-      OPENCSG_QMAKE=$OPENCSG_QMAKE' "QMAKE_CXXFLAGS+=-Wunknown-pragmas"'
+      OPENCSG_QMAKE=$OPENCSG_QMAKE' QMAKE_CXXFLAGS+=-m32'
+      OPENCSG_QMAKE=$OPENCSG_QMAKE' QMAKE_CXXFLAGS+=-Wno-unknown-pragmas'
     fi
   fi
   echo OPENCSG_QMAKE: $OPENCSG_QMAKE
@@ -799,17 +803,20 @@ if [ "`uname | grep SunOS`" ]; then
   fi
   cp /opt/csw/bin/gtar $DEPLOYDIR/bin/tar
   cp /opt/csw/bin/gmake $DEPLOYDIR/bin/make
+  cp /opt/csw/bin/ggrep $DEPLOYDIR/bin/grep
+  cp /opt/csw/bin/ginstall $DEPLOYDIR/bin/install
   #build_make 4.1
-  #build_zlib 1.2.8
   #build_binutils 2.25
   # coreutils 8.x broken on solaris
   #build_coreutils 7.6
+
   # libtool, autoconf, automake are for harfbuzz
-  #build_libtool 2.4.5
-  #build_autoconf 2.68
-  #build_automake 1.14
-  #build_flex 2.5.39
-  #build_bison 3.0
+  build_libtool 2.4.5
+  build_autoconf 2.68
+  build_automake 1.14
+
+  build_flex 2.5.39
+  build_bison 3.0
   #build_pkgconfig 0.28
   #build_libffi 3.0.13
   #build_git 2.4.9
@@ -818,6 +825,8 @@ if [ "`uname | grep SunOS`" ]; then
   elif [ "`cmake --version | grep 'version 3.2'`" ]; then
     build_cmake 3.3 3.3.2
   fi
+  #libxml2 needs this for gzopen64 symbol
+  build_zlib 1.2.8
 fi
 
 if [ ! "`command -v bison`" ]; then
@@ -912,10 +921,10 @@ build_opencsg 1.3.2
 #build_glib2 2.46.0
 
 # the following are only needed for text()
-#build_freetype 2.5.0.1 --without-png
-#build_libxml2 2.9.1
-#build_fontconfig 2.11.1 --with-add-fonts=/usr/X11R6/lib/X11/fonts,/usr/local/share/fonts
-#build_ragel 6.9
-#build_harfbuzz 1.0.3 --with-glib=yes
+build_freetype 2.5.0.1 --without-png
+build_libxml2 2.9.1
+build_fontconfig 2.11.1 --with-add-fonts=/usr/X11R6/lib/X11/fonts,/usr/local/share/fonts
+build_ragel 6.9
+build_harfbuzz 1.0.3 --with-glib=yes
 
 echo "OpenSCAD dependencies built and installed to " $BASEDIR

@@ -12,6 +12,8 @@
 #include "PlatformUtils.h"
 #include "boosty.h"
 
+#include <signal.h>
+
 std::string PlatformUtils::pathSeparatorChar()
 {
 	return ":";
@@ -176,4 +178,39 @@ std::string PlatformUtils::sysinfo(bool extended)
 }
 
 void PlatformUtils::ensureStdIO(void) {}
+
+volatile sig_atomic_t oscad_crashflag = 0;
+struct sigaction oscad_oldact,oscad_newact;
+int sigaction_status = 0;
+	
+static void handle_crash(int sig)
+{
+	// don't call any functions, it is unreliable inside of a crash
+	oscad_crashflag = 1;
+}
+
+bool crashed()
+{
+	return (oscad_crashflag>0);
+}
+
+void suspend_crashsig()
+{	
+        PRINTD("suspend_crashsig posix");
+        memset(&oscad_oldact, '\0', sizeof(oscad_oldact));
+        memset(&oscad_newact, '\0', sizeof(oscad_newact));
+        oscad_newact.sa_handler = &handle_crash;
+        sigaction_status = sigaction(SIGSEGV, &oscad_newact, &oscad_oldact);
+        if (sigaction_status<0)
+		PRINTD("sigaction() failed, cannot block SIGSEGV");
+}
+
+void restore_crashsig()
+{
+        if (sigaction_status>0) {
+	        PRINTD("restore_crashsig posix");
+                if (sigaction(SIGSEGV, &oscad_oldact, &oscad_newact)<0)
+                        PRINTD("sigaction() could not restore handler");
+	}
+}
 

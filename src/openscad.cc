@@ -192,11 +192,12 @@ void localization_init() {
 	std::string locale_path(po_dir.string());
 	PRINTDB("locale path %s",locale_path);
 	if (fs::is_directory(locale_path)) {
-/*		setlocale(LC_ALL, "");
+		PlatformUtils::suspend_crashsig(); // gettext tends to crash
+		setlocale(LC_ALL, "");
 		bindtextdomain("openscad", locale_path.c_str());
 		bind_textdomain_codeset("openscad", "UTF-8");
 		textdomain("openscad");
-*/
+		PlatformUtils::restore_crashsig();
 	} else {
 		PRINT("Could not initialize localization.");
 	}

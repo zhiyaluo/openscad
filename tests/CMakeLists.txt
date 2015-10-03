@@ -596,6 +596,23 @@ else()
   endif()
 endif()
 
+##
+## libintl - FindIntl gets confused by multiple libints
+##
+
+find_path(Intl_INCLUDE_DIR "libintl.h")
+find_library(Intl_LIBRARY "intl")
+
+if (${CMAKE_SYSTEM_NAME} MATCHES ".*SunOS.*")
+  message(STATUS "solaris intl ${INTLHINT}")
+  set(Intl_INCLUDE_DIR "/usr/include")
+  set(Intl_LIBRARY "/usr/lib/libintl.so")
+endif()
+
+message(STATUS "LibIntl include: ${Intl_INCLUDE_DIR}")
+message(STATUS "LibIntl lib: ${Intl_LIBRARY}")
+inclusion(Intl_INCLUDE_DIR Intl_INCLUDE_DIR)
+
 # Internal includes
 include_directories(../src ../src/libtess2/Include)
 
@@ -656,8 +673,8 @@ elseif(WIN32)
 endif()
 
 if (${CMAKE_SYSTEM_NAME} MATCHES ".*SunOS.*")
-	message(STATUS "Offscreen OpenGL Context - Alternate GLX for Solaris")
-	set(OFFSCREEN_CTX_SOURCE "OffscreenContextGLXalt.cc")
+#	message(STATUS "Offscreen OpenGL Context - Alternate GLX for Solaris")
+#	set(OFFSCREEN_CTX_SOURCE "OffscreenContextGLXalt.cc")
 endif()
 
 set(CORE_SOURCES
@@ -796,7 +813,7 @@ target_link_libraries(tests-common tests-core)
 
 add_library(tests-cgal STATIC ${CGAL_SOURCES})
 set_target_properties(tests-cgal PROPERTIES COMPILE_FLAGS "${ENABLE_OPENCSG_FLAG} -DENABLE_CGAL ${CGAL_CXX_FLAGS_INIT}")
-target_link_libraries(tests-cgal tests-common ${CGAL_LIBRARY} ${CGAL_3RD_PARTY_LIBRARIES} ${GMP_LIBRARIES} ${MPFR_LIBRARIES})
+target_link_libraries(tests-cgal tests-common ${CGAL_LIBRARY} ${CGAL_3RD_PARTY_LIBRARIES} ${GMP_LIBRARIES} ${MPFR_LIBRARIES} -lintl)
 
 #
 # Create non-CGAL tests
@@ -838,7 +855,7 @@ target_link_libraries(cgalcachetest tests-cgal ${GLEW_LIBRARY} ${OPENCSG_LIBRARY
 if (NOGUI)
  add_executable(openscad_nogui ../src/openscad.cc)
  set_target_properties(openscad_nogui PROPERTIES COMPILE_FLAGS "-fno-strict-aliasing -DEIGEN_DONT_ALIGN ${ENABLE_OPENCSG_FLAG} -DENABLE_CGAL ${CGAL_CXX_FLAGS_INIT}")
- target_link_libraries(openscad_nogui tests-offscreen tests-cgal ${GLEW_LIBRARY} ${OPENCSG_LIBRARY} ${APP_SERVICES_LIBRARY})
+ target_link_libraries(openscad_nogui tests-offscreen tests-cgal ${GLEW_LIBRARY} ${OPENCSG_LIBRARY} ${APP_SERVICES_LIBRARY} ${LIBINTL_LIBRARY})
 endif()
 
 #

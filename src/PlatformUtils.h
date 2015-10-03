@@ -87,4 +87,14 @@ namespace PlatformUtils {
          * a given number of digits.
          */
         std::string toMemorySizeString(uint64_t bytes, int digits);
+
+        /**
+	 * temporarily shutoff crash signals. this is used when calling
+	 * libraries that tend to crash, like GLX or gettext. Call suspend,
+	 * then call a problematic function like GLXqueryVersion, then call
+	 * crash() to see if the function crashed, then restore.
+         */
+	void suspend_crashsig();
+	void restore_crashsig();
+	bool crashed();
 }

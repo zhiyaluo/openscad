@@ -48,8 +48,9 @@ build_libxml2()
   gzip -cd "libxml2-$version.tar.gz" | tar xf - 
   cd "libxml2-$version"
   if [ "`uname | grep SunOS`" ]; then
-    OTHERFLAGS=--with-zlib=$DEPLOYDIR
+    OTHERFLAGS=--with-zlib=/opt/csw
   fi
+  echo ./configure --disable-silent-rules --prefix="$DEPLOYDIR" --without-ftp --without-http --without-python $OTHERFLAGS
   ./configure --disable-silent-rules --prefix="$DEPLOYDIR" --without-ftp --without-http --without-python $OTHERFLAGS
   make -j$NUMCPU
   make install
@@ -60,7 +61,7 @@ build_fontconfig()
   version=$1
   extra_config_flags="$2"
 
-  if [ -e $DEPLOYDIR/include/fontconfig ]; then
+  if [ -e $DEPLOYDIR/lib/libfontconfig.so ]; then
     echo "fontconfig already installed. not building"
     return
   fi

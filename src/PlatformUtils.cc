@@ -226,3 +226,4 @@ std::string PlatformUtils::toMemorySizeString(uint64_t bytes, int digits)
 	fmt % boost::io::group(std::setprecision(digits), val) % units[idx];
 	return fmt.str();
 }
+
