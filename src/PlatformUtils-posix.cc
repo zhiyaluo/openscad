@@ -187,13 +187,21 @@ static sigjmp_buf jmpbuf;
 
 static void handle_crash(int sig)
 {
-	// don't call any functions, it is unreliable inside of a crash
 	oscad_crashflag = 1;
+	// this might not work, but when it does work, it will save us
+	// from an ungraceful core dump and allow us to simply exit.
 	siglongjmp( jmpbuf, 0 );
 }
 
 bool PlatformUtils::willcrash()
 {
+	// sigsetjmp is a bit tricky. it's either an ordinary
+	// function... or it can also be a target of a "goto"
+	// from siglongjmp(). the return value of sigsetjmp
+	// determines the difference. this is how we know whether
+	// we will crash or not... in our crash handler (above)
+	// we can "turn back time", to this very point, and stop from
+	// calling the crashing-function in the first place.
 	if (sigsetjmp( jmpbuf, 1 )==0) return false;
 	return true;
 }
@@ -206,6 +214,7 @@ bool PlatformUtils::crashed()
 void PlatformUtils::suspend_crashsig()
 {	
         PRINTD("suspend_crashsig posix");
+	oscad_crashflag = 0;
 	memset(&oscad_newact, '\0', sizeof(oscad_newact));
         oscad_newact.sa_handler = &handle_crash;
         sigaction_status = sigaction(SIGSEGV, &oscad_newact, &oscad_oldact);
@@ -220,5 +229,6 @@ void PlatformUtils::restore_crashsig()
                 if (sigaction(SIGSEGV, &oscad_oldact, NULL)<0)
                         PRINTD("sigaction() could not restore handler");
 	}
+	oscad_crashflag = 0;
 }
 

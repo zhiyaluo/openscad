@@ -101,9 +101,10 @@ std::string offscreen_context_getinfo(OffscreenContext *ctx)
 
 	int major = 0;
 	int minor = 0;
-	glXQueryVersion(ctx->xdisplay, &major, &minor);
+	if (!PlatformUtils::willcrash())
+		glXQueryVersion(ctx->xdisplay, &major, &minor);
 	if (PlatformUtils::crashed())  {
-		PRINT("GLX init crash. Signal trapped\n");
+		PRINT("GLX init crashed with SIGSEGV, skipping\n");
 		major = minor = 0;
 	}
 
@@ -163,9 +164,11 @@ bool create_glx_dummy_window(OffscreenContext &ctx)
 
 	int num_returned = 0;
 	PRINTD("glxChooseFBConfig");
-	GLXFBConfig *fbconfigs = glXChooseFBConfig( dpy, DefaultScreen(dpy), attributes, &num_returned );
+	GLXFBConfig *fbconfigs = NULL;
+	if (!PlatformUtils::willcrash())
+		fbconfigs = glXChooseFBConfig( dpy, DefaultScreen(dpy), attributes, &num_returned );
 	if (PlatformUtils::crashed()) {
-		PRINT("GLX init crash. Signal trapped\n");
+		PRINT("GLX init crashed with SIGSEGV, skipping\n");
 		fbconfigs = NULL;
 	}
 	if ( fbconfigs == NULL ) {
@@ -173,10 +176,11 @@ bool create_glx_dummy_window(OffscreenContext &ctx)
 		return false;
 	}
 
-	PRINTD("glXGetVisualFromFBConfig");
-	XVisualInfo *visinfo = glXGetVisualFromFBConfig( dpy, fbconfigs[0] );
+	XVisualInfo *visinfo = NULL;
+	if (!PlatformUtils::willcrash())
+		visinfo = glXGetVisualFromFBConfig( dpy, fbconfigs[0] );
 	if (PlatformUtils::crashed()) {
-		PRINT("GLX init crash. Signal trapped\n");
+		PRINT("GLX init crashed with SIGSEGV, skipping\n");
 		visinfo  = NULL;
 	}
 	if ( visinfo == NULL ) {
@@ -219,7 +223,7 @@ bool create_glx_dummy_window(OffscreenContext &ctx)
 	PRINTD("glXCreateNewContext");
 	GLXContext context = glXCreateNewContext( dpy, fbconfigs[0], GLX_RGBA_TYPE, NULL, True );
 	if (PlatformUtils::crashed()) {
-		PRINT("GLX init crash. Signal trapped\n");
+		PRINT("GLX init crashed with SIGSEGV, skipping\n");
 		context = NULL;
 	}
 	if ( context == NULL ) {
@@ -242,7 +246,7 @@ bool create_glx_dummy_window(OffscreenContext &ctx)
 		return false;
 	}
 	if (PlatformUtils::crashed()) {
-		PRINT("GLX init crash. Signal trapped\n");
+		PRINT("GLX init crashed with SIGSEGV, skipping\n");
 		glXDestroyContext( dpy, context );
 		XDestroyWindow( dpy, xWin );
 		XFree( visinfo );

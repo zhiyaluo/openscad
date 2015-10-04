@@ -111,6 +111,10 @@ std::string openscad_detailedversionnumber =
   openscad_versionnumber;
 #endif
 
+#ifdef ENABLE_CGAL
+static CGAL::FPU_CW_t fpu_saved_state = CGAL::FPU_get_cw();
+#endif
+
 class Echostream : public std::ofstream
 {
 public:
@@ -154,6 +158,10 @@ static void help(const char *progname, bool failure = false)
 #endif
          "%2%filename\n",
  				 progname % (const char *)tabstr);
+#ifdef ENABLE_CGAL
+	CGAL::FPU_set_cw( fpu_saved_state );
+	CGAL::FPU_CW_t fpu_restored_state = CGAL::FPU_get_cw();
+#endif
 	exit(failure ? 1 : 0);
 }
 
@@ -162,6 +170,7 @@ static void help(const char *progname, bool failure = false)
 static void version()
 {
 	PRINTB("OpenSCAD version %s", TOSTRING(OPENSCAD_VERSION));
+	CGAL::FPU_set_cw( fpu_saved_state );
 	exit(0);
 }
 
@@ -172,14 +181,12 @@ static void info()
 	CsgInfo csgInfo = CsgInfo();
 	try {
 		csgInfo.glview = new OffscreenView(512,512);
+		std::cout << csgInfo.glview->getRendererInfo() << "\n";
 	} catch (int error) {
 		PRINTB("Can't create OpenGL OffscreenView. Code: %i. Exiting.\n", error);
-		exit(1);
 	}
-
-	std::cout << csgInfo.glview->getRendererInfo() << "\n";
-
-	exit(0);
+	CGAL::FPU_set_cw( fpu_saved_state );
+	exit(1);
 }
 
 /**
@@ -196,12 +203,13 @@ void localization_init() {
 		return;
 	}
 	PlatformUtils::suspend_crashsig(); // gettext tends to crash
-	setlocale(LC_ALL, "");
-	if (!PlatformUtils::crashed())
+	if (!PlatformUtils::willcrash())
+		setlocale(LC_ALL, "");
+	if (!PlatformUtils::willcrash() && !PlatformUtils::crashed())
 		bindtextdomain("openscad", locale_path.c_str());
-	if (!PlatformUtils::crashed())
+	if (!PlatformUtils::willcrash() && !PlatformUtils::crashed())
 		bind_textdomain_codeset("openscad", "UTF-8");
-	if (!PlatformUtils::crashed())
+	if (!PlatformUtils::willcrash() && !PlatformUtils::crashed())
 		textdomain("openscad");
 	PlatformUtils::restore_crashsig();
 }
@@ -777,6 +785,7 @@ int main(int argc, char **argv)
 #endif
 
 #ifdef ENABLE_CGAL
+	// std::cout << "FPU saved state, for CGAL: " << fpu_saved_state << "\n"; 
 	// Causes CGAL errors to abort directly instead of throwing exceptions
 	// (which we don't catch). This gives us stack traces without rerunning in gdb.
 	CGAL::set_error_behaviour(CGAL::ABORT);
@@ -933,6 +942,12 @@ int main(int argc, char **argv)
 	}
 
 	Builtins::instance(true);
+
+#ifdef ENABLE_CGAL
+	CGAL::FPU_set_cw( fpu_saved_state );
+	CGAL::FPU_CW_t fpu_restored_state = CGAL::FPU_get_cw();
+	// std::cout  << "FPU restored state, for CGAL: " << fpu_restored_state << "\n"; 
+#endif
 
 	return rc;
 }
