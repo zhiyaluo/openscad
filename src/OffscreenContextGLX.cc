@@ -1,8 +1,6 @@
 /*
 
-Create an OpenGL context without creating an OpenGL Window. for linux/bsd
-
-For incompatible systems (Solaris Openwin), please see OffscreenContextGLXalt.cc
+Create an OpenGL context without creating an OpenGL Window. for linux/bsd X11
 
 See also
 

@@ -154,13 +154,13 @@ build_qt5()
 
   echo "Building Qt" $version "..."
   cd $BASEDIR/src
-  rm -rf ./qt-everywhere-opensource-src-$version
+#  rm -rf ./qt-everywhere-opensource-src-$version
   v=`echo "$version" | sed -e 's/\.[0-9]$//'`
   if [ ! -f qt-everywhere-opensource-src-$version.tar.gz ]; then
      echo downloading
      curl -O -L http://download.qt-project.org/official_releases/qt/$v/$version/single/qt-everywhere-opensource-src-$version.tar.gz
   fi
-  gzip -cd qt-everywhere-opensource-src-$version.tar.gz | tar xf -
+#  gzip -cd qt-everywhere-opensource-src-$version.tar.gz | tar xf -
   cd qt-everywhere-opensource-src-$version
   ./configure -prefix $DEPLOYDIR -release -static -opensource -confirm-license \
                 -nomake examples -nomake tests \
@@ -170,7 +170,13 @@ build_qt5()
                 -skip enginio -skip graphicaleffects -skip location -skip multimedia \
                 -skip quick1 -skip quickcontrols -skip script -skip sensors -skip serialport \
                 -skip svg -skip webkit -skip webkit-examples -skip websockets -skip xmlpatterns
-  make -j"$NUMCPU" install
+  make -j"$NUMCPU"
+  make install
+
+  if [ ! -f $DEPLOYDIR/lib/libQt5Core.a ]; then
+    echo "Qt5 build failed. exiting."
+    exit
+  fi
 }
 
 build_qt5scintilla2()
@@ -193,23 +199,6 @@ build_qt5scintilla2()
   cd QScintilla-gpl-$version/Qt4Qt5/
   qmake CONFIG+=staticlib
   make -j"$NUMCPU" install
-}
-
-build_git()
-{
-  version=$1
-  echo "Building git" $version "..."
-  cd $BASEDIR/src
-  rm -rf ./git-$version
-  if [ ! -f git-$version.tar.gz ]; then
-    echo downloading
-    curl --insecure -O http://git-core.googlecode.com/files/git-$version.tar.gz
-  fi
-  gzip -cd git-$version.tar.gz | tar xf -
-  cd git-$version
-  ./configure --prefix=$DEPLOYDIR
-  make -j$NUMCPU
-  make install
 }
 
 build_cmake()
@@ -827,6 +816,7 @@ if [ "`uname | grep SunOS`" ]; then
   fi
   #libxml2 needs this for gzopen64 symbol
   build_zlib 1.2.8
+  build_osmesa 11.0.2
 fi
 
 if [ ! "`command -v bison`" ]; then

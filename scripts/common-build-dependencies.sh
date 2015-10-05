@@ -466,7 +466,7 @@ build_git()
   echo "Building git $version..."
   cd "$BASEDIR"/src
   rm -rf "git-$version"
-  if [ ! -f "git-$version.tar.gz" ]; then
+  if [ ! -f "git-$version.tar.xz" ]; then
     curl --insecure -LO https://www.kernel.org/pub/software/scm/git/git-$version.tar.xz
   fi
   xz -cd "git-$version.tar.xz" | tar xf -
@@ -474,5 +474,59 @@ build_git()
   LDFLAGS=-lintl ./configure --prefix="$DEPLOYDIR" --with-sane-tool-path=$DEPLOYDIR/bin
   LDFLAGS=-lintl make V=1
   make V=1 install
+}
+
+
+build_glproto()
+{
+  if [ -e $DEPLOYDIR/lib/pkgconfig/glproto.pc ]; then
+    echo "glproto already installed. not building"
+    return
+  fi
+  cd "$BASEDIR"/src
+  rm -rf ./glproto
+  git clone git://anongit.freedesktop.org/xorg/proto/glproto
+  cd glproto
+  ./autogen.sh --prefix=$DEPLOYDIR --disable-silent-rules
+  make VERBOSE=1
+  make install
+}
+
+build_osmesa()
+{
+  build_glproto
+
+  version=$1
+
+  if [ -e $DEPLOYDIR/lib/libOSMesa.so ]; then
+    echo "OSMesa already installed. not building"
+    return
+  fi
+
+  echo "Building OSMesa $version..."
+  cd "$BASEDIR"/src
+  rm -rf "mesa-$version"
+  if [ ! -f "mesa-$version.tar.xz" ]; then
+    curl --insecure -LO ftp://ftp.freedesktop.org/pub/mesa/11.0.2/mesa-$version.tar.xz
+  fi
+  xz -cd "mesa-$version.tar.xz" | tar xf -
+  cd "mesa-$version"
+  #./configure --prefix=$DEPLOYDIR \
+  # --disable-silent-rules --enable-osmesa --disable-driglx-direct  \
+  # --disable-dri --disable-dri3 --disable-egl --with-gallium-drivers=swrast \
+  # --with-dri-drivers=swrast --enable-shared
+  if [ "`uname | grep SunOS`" ]; then
+    # #define _XOPEN_SOURCE 600 // Solaris 
+    # https://github.com/cesanta/mongoose/issues/21
+    sed s/"DEFINES -DSVR4"/"DEFINES -DSVR4 -D_XOPEN_SOURCE=600 -Drestrict= -DNULL=0"/ configure > ./configure.tmp
+    mv ./configure.tmp ./configure
+  fi
+  chmod u+x ./configure
+  ./configure --prefix=$DEPLOYDIR \
+   --disable-silent-rules --enable-osmesa --disable-driglx-direct  \
+   --disable-dri --disable-dri3 --disable-egl --with-gallium-drivers=swrast \
+   --enable-shared --disable-glx
+  make VERBOSE=1	
+  make install
 }
 

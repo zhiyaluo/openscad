@@ -149,7 +149,7 @@ solaris* {
       QMAKE_CXXFLAGS += -m64
       QMAKE_CFLAGS += -m64
    }
-   QMAKE_LFLAGS = $$QMAKE_LFLAGS -lintl
+   QMAKE_LFLAGS = $$QMAKE_LFLAGS -lintl /opt/csw/lib/libintl.so.8
 }
 
 # Prevent LD_LIBRARY_PATH problems when running the openscad binary

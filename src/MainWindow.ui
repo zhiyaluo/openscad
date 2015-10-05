@@ -132,7 +132,7 @@
         </widget>
        </item>
        <item>
-        <widget class="QGLView" name="qglview" native="true">
+        <widget class="QGLView" name="qglview" native="true"> 
          <property name="sizePolicy">
           <sizepolicy hsizetype="Expanding" vsizetype="Expanding">
            <horstretch>0</horstretch>
@@ -1279,7 +1279,7 @@
    <header>QGLView.h</header>
    <container>1</container>
   </customwidget>
-  <customwidget>
+  <customwidget> 
    <class>Dock</class>
    <extends>QDockWidget</extends>
    <header>Dock.h</header>

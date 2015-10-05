@@ -316,11 +316,18 @@ else()
   inclusion(EIGEN_DIR EIGEN_INCLUDE_DIR)
 endif()
 
+# enable pkg-config searching of dependencies (pkg_check_modules)
+find_package(PkgConfig REQUIRED)
+include(PkgConfigTools.cmake)
+
+
 ###### NULLGL wraps all OpenGL(TM) items (GL, Glew, OpenCSG)
 ###### Several pages of code fall under this 'if( NOT NULLGL )'
 if (NOT NULLGL)
 
 # OpenGL
+add_definitions(-DOSMESA)
+
 find_package(OpenGL REQUIRED)
 if (NOT OPENGL_GLU_FOUND)
   message(STATUS "GLU not found in system paths...searching $ENV{OPENSCAD_LIBRARIES} ")
@@ -335,14 +342,25 @@ foreach(GLLIB ${OPENGL_LIBRARIES})
   message(STATUS "  " ${GLLIB})
 endforeach()
 if (UNIX)
+ if (NOT OSMESA)
   # see github issue 1355. as of writing the code for offscreen GL context
   # setup requires X11 on Un*x like systems (not Apple/Win).
   find_package(X11 REQUIRED)
-  message(STATUS "X11_INCLUDE_DIR: " ${X11_INCLUDE_DIR})
+  message(STATUS "X11_INCLUDEDIR: " ${X11_INCLUDEDIR})
   message(STATUS "X11_LIBRARIES: ")
   foreach(XLIB ${X11_LIBRARIES})
     message(STATUS "  " ${XLIB})
   endforeach()
+ endif()
+endif()
+
+# OSMesa - see below under 'platform specifics' for more info
+if (OSMESA)
+  save_pkg_config_env()
+  pkg_check_modules(OSMESA REQUIRED osmesa>=7.0.0)
+  restore_pkg_config_env()
+  message(STATUS "OSMESA_INCLUDEDIR: ${OSMESA_INCLUDEDIR}")
+  message(STATUS "OSMESA_LIBRARIES: ${OSMESA_LIBRARIES}")
 endif()
 
 # OpenCSG
@@ -514,9 +532,7 @@ find_package(GLIB2 2.2.0 REQUIRED)
 add_definitions(${GLIB2_DEFINITIONS})
 inclusion(GLIB2_DIR GLIB2_INCLUDE_DIRS)
 
-# find libraries using pkg-config
-find_package(PkgConfig REQUIRED)
-include(PkgConfigTools.cmake)
+# libs for text() command
 save_pkg_config_env()
 
 if (DEFINED ENV{OPENSCAD_LIBRARIES})
@@ -611,7 +627,7 @@ endif()
 
 message(STATUS "LibIntl include: ${Intl_INCLUDE_DIR}")
 message(STATUS "LibIntl lib: ${Intl_LIBRARY}")
-inclusion(Intl_INCLUDE_DIR Intl_INCLUDE_DIR)
+inclusion(Intl_INCLUDE_DIR "")
 
 # Internal includes
 include_directories(../src ../src/libtess2/Include)
@@ -646,7 +662,7 @@ if (DEFINED OPENSCAD_DAY)
   add_definitions(-DOPENSCAD_DAY=${OPENSCAD_DAY})
 endif()
 
-add_definitions(-DENABLE_EXPERIMENTAL -DOPENSCAD_NOGUI)
+add_definitions(-DENABLE_EXPERIMENTAL -DNOGUI)
 
 # Search for MCAD in correct place
 set(CTEST_ENVIRONMENT "${CTEST_ENVIRONMENT};OPENSCADPATH=${CMAKE_CURRENT_SOURCE_DIR}/../libraries")
@@ -674,10 +690,14 @@ else()
 	message(FATAL_ERROR "unknkown platform")
 endif()
 
-if (${CMAKE_SYSTEM_NAME} MATCHES ".*SunOS.*")
-#	message(STATUS "Offscreen OpenGL Context - Alternate GLX for Solaris")
-#	set(OFFSCREEN_CTX_SOURCE "OffscreenContextGLXalt.cc")
+# OSMesa - for those special times, when you have no GL libraries or hardware
+# enable with cmake -DOSMESA=1 (it assumes you are already using -DNOGUI=1)
+if (OSMESA)
+  message(STATUS "Offscreen OpenGL Context - overriding with OSMesa")
+  set(OFFSCREEN_CTX_SOURCE "OffscreenContextOSMesa.cc")
+  set(OFFSCREEN_CTX_LIBRARIES ${OSMESA_LIBRARIES} CACHE TYPE STRING)
 endif()
+
 
 set(CORE_SOURCES
   tests-common.cc 
