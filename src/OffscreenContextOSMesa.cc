@@ -35,14 +35,6 @@ OffscreenContext.mm (Mac OSX version)
  * CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
  */
 
-#include <GL/osmesa.h>
-// gl_wrap.h from mesa-demos osmesa.c is essentially reproduced by system-gl.h
-// except this part.
-#ifndef GLAPIENTRY
-#define GLAPIENTRY
-#endif
-// end gl_wrap.h
-
 #include "OffscreenContext.h"
 #include "printutils.h"
 #include "imageutils.h"
@@ -126,7 +118,8 @@ OffscreenContext *create_offscreen_context(int w, int h)
 	GLint accumBits = 8; // ??
 	OSMesaContext sharelist = NULL;
 
-	ctx->osMesaContext = OSMesaCreateContextExt( format, depthBits, stencilBits, accumBits, sharelist );
+//	ctx->osMesaContext = OSMesaCreateContextExt( format, depthBits, stencilBits, accumBits, sharelist );
+	ctx->osMesaContext = OSMesaCreateContext( format, NULL );
 	if (!ctx->osMesaContext) {
 		PRINTD("OSMesaCreateContextExt failed");
 		delete ctx;
@@ -136,8 +129,8 @@ OffscreenContext *create_offscreen_context(int w, int h)
 	GLsizei width = static_cast<GLsizei>(w);
 	GLsizei height = static_cast<GLsizei>(h);
 	GLenum type = GL_UNSIGNED_BYTE;
-	
-	if (!OSMesaMakeCurrent( ctx->osMesaContext, ctx->pixels, type, width, height )) {
+	void * buffer_pointer = static_cast<void *>(&(ctx->pixels[0]));
+	if (!OSMesaMakeCurrent( ctx->osMesaContext, buffer_pointer, type, width, height )) {
 		PRINTD("OSMesaMakeCurrent failed");
 		delete ctx;
 		return NULL;

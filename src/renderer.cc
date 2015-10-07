@@ -38,8 +38,9 @@ Renderer::Renderer() : colorscheme(NULL)
 	PRINTD("Renderer() end");
 }
 
-void Renderer::setColor(const float color[4], GLint *shaderinfo) const
+void Renderer::setColor(const float color[4], int *shaderinfo_asint) const
 {
+	GLint * shaderinfo = static_cast<GLint*>(shaderinfo_asint);
 	PRINTD("setColor a");
 	Color4f col;
 	getColor(COLORMODE_MATERIAL,col);
@@ -57,9 +58,10 @@ void Renderer::setColor(const float color[4], GLint *shaderinfo) const
 #endif
 }
 
-void Renderer::setColor(ColorMode colormode, const float color[4], GLint *shaderinfo) const
+void Renderer::setColor(ColorMode colormode, const float color[4], int *shaderinfo_asint) const
 {
 	PRINTD("setColor b");
+	GLint * shaderinfo = static_cast<GLint*>(shaderinfo_asint);
 	Color4f basecol;
 	if (getColor(colormode, basecol)) {
 		if (colormode == COLORMODE_BACKGROUND) {
@@ -78,8 +80,9 @@ void Renderer::setColor(ColorMode colormode, const float color[4], GLint *shader
 	}
 }
 
-void Renderer::setColor(ColorMode colormode, GLint *shaderinfo) const
+void Renderer::setColor(ColorMode colormode, int *shaderinfo_asint) const
 {	
+	GLint * shaderinfo = static_cast<GLint*>(shaderinfo_asint);
 	PRINTD("setColor c");
 	float c[4] = {-1,-1,-1,-1};
 	setColor(colormode, c, shaderinfo);
@@ -99,8 +102,9 @@ void Renderer::setColorScheme(const ColorScheme &cs) {
 	this->colorscheme = &cs;
 }
 
-void Renderer::render_surface(shared_ptr<const Geometry> geom, csgmode_e csgmode, const Transform3d &m, GLint *shaderinfo)
+void Renderer::render_surface(shared_ptr<const Geometry> geom, csgmode_e csgmode, const Transform3d &m, int *shaderinfo_asint)
 {
+	GLint * shaderinfo = static_cast<GLint*>(shaderinfo_asint);
 	shared_ptr<const PolySet> ps = dynamic_pointer_cast<const PolySet>(geom);
 	if (ps) ps->render_surface(csgmode, m, shaderinfo);
 }

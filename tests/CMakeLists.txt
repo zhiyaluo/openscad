@@ -326,8 +326,24 @@ include(PkgConfigTools.cmake)
 if (NOT NULLGL)
 
 # OpenGL
+
 add_definitions(-DOSMESA)
 
+# OSMesa - see below under 'platform specifics' for more info
+if (OSMESA)
+  save_pkg_config_env()
+  pkg_check_modules(OSMESA REQUIRED osmesa>=7.0.0)
+  pkg_check_modules(GLU REQUIRED glu>=8.0.0)
+  restore_pkg_config_env()
+  message(STATUS "OSMESA_INCLUDEDIR: ${OSMESA_INCLUDEDIR}")
+  message(STATUS "OSMESA_LIBRARIES: ${OSMESA_LIBRARIES}")
+  message(STATUS "GLU_INCLUDEDIR: ${GLU_INCLUDEDIR}")
+  message(STATUS "GLU_LIBRARIES: ${GLU_LIBRARIES}")
+  set(OPENGL_LIBRARIES ${GLU_LIBRARIES})
+  message(STATUS "OPENGL_LIBRARIES: ${OPENGL_LIBRARIES}")
+endif()
+
+if (NOT OSMESA)
 find_package(OpenGL REQUIRED)
 if (NOT OPENGL_GLU_FOUND)
   message(STATUS "GLU not found in system paths...searching $ENV{OPENSCAD_LIBRARIES} ")
@@ -342,7 +358,6 @@ foreach(GLLIB ${OPENGL_LIBRARIES})
   message(STATUS "  " ${GLLIB})
 endforeach()
 if (UNIX)
- if (NOT OSMESA)
   # see github issue 1355. as of writing the code for offscreen GL context
   # setup requires X11 on Un*x like systems (not Apple/Win).
   find_package(X11 REQUIRED)
@@ -351,17 +366,8 @@ if (UNIX)
   foreach(XLIB ${X11_LIBRARIES})
     message(STATUS "  " ${XLIB})
   endforeach()
- endif()
 endif()
-
-# OSMesa - see below under 'platform specifics' for more info
-if (OSMESA)
-  save_pkg_config_env()
-  pkg_check_modules(OSMESA REQUIRED osmesa>=7.0.0)
-  restore_pkg_config_env()
-  message(STATUS "OSMESA_INCLUDEDIR: ${OSMESA_INCLUDEDIR}")
-  message(STATUS "OSMESA_LIBRARIES: ${OSMESA_LIBRARIES}")
-endif()
+endif() # not OSMESA
 
 # OpenCSG
 if (NOT $ENV{OPENCSGDIR} STREQUAL "")
@@ -662,7 +668,7 @@ if (DEFINED OPENSCAD_DAY)
   add_definitions(-DOPENSCAD_DAY=${OPENSCAD_DAY})
 endif()
 
-add_definitions(-DENABLE_EXPERIMENTAL -DNOGUI)
+add_definitions(-DENABLE_EXPERIMENTAL -DOPENSCAD_NOGUI)
 
 # Search for MCAD in correct place
 set(CTEST_ENVIRONMENT "${CTEST_ENVIRONMENT};OPENSCADPATH=${CMAKE_CURRENT_SOURCE_DIR}/../libraries")
@@ -691,7 +697,7 @@ else()
 endif()
 
 # OSMesa - for those special times, when you have no GL libraries or hardware
-# enable with cmake -DOSMESA=1 (it assumes you are already using -DNOGUI=1)
+# enable with cmake -DOSMESA=1 (it assumes you are already using -DOPENSCAD_NOGUI=1)
 if (OSMESA)
   message(STATUS "Offscreen OpenGL Context - overriding with OSMesa")
   set(OFFSCREEN_CTX_SOURCE "OffscreenContextOSMesa.cc")
@@ -871,10 +877,10 @@ target_link_libraries(cgalcachetest tests-cgal ${GLEW_LIBRARY} ${OPENCSG_LIBRARY
 
 #
 # openscad_nogui - an OpenSCAD binary build without Qt
-# Enabled by using -DNOGUI=1 as a cmake parameter. Only kept for backwards compatibility and in case
+# Enabled by using -DOPENSCAD_NOGUI=1 as a cmake parameter. Only kept for backwards compatibility and in case
 # someone needs that binary.
 #
-if (NOGUI)
+if (OPENSCAD_NOGUI)
  set(NOGUI_LINKFLAGS "-t")
  add_executable(openscad_nogui ../src/openscad.cc)
  set_target_properties(openscad_nogui PROPERTIES COMPILE_FLAGS "-fno-strict-aliasing -DEIGEN_DONT_ALIGN ${ENABLE_OPENCSG_FLAG} -DENABLE_CGAL ${CGAL_CXX_FLAGS_INIT}" LINK_FLAGS ${NOGUI_LINKFLAGS})
@@ -903,14 +909,14 @@ if(EXISTS "${OPENSCAD_BINPATH}")
   message(STATUS "Found OpenSCAD binary: ${OPENSCAD_BINPATH}")
 else()
   message(STATUS "Couldn't find the OpenSCAD binary: ${OPENSCAD_BINPATH}")
-  if(NOT NOGUI)
+  if(NOT OPENSCAD_NOGUI)
     message(FATAL_ERROR "Please build the OpenSCAD binary and place it here: ${OPENSCAD_BINPATH}" )
   endif()
 endif()
 
-if(NOGUI)
+if(OPENSCAD_NOGUI)
   set(OPENSCAD_BINPATH ${CMAKE_CURRENT_BINARY_DIR}/openscad_nogui)
-  message(STATUS "-DNOGUI, will build OpenSCAD binary: ${OPENSCAD_BINPATH}")
+  message(STATUS "-DOPENSCAD_NOGUI, will build OpenSCAD binary: ${OPENSCAD_BINPATH}")
 endif()
 
 

@@ -32,14 +32,14 @@ string glew_extensions_dump()
 {
 	std::string tmp;
 	if ( gl_version() >= 3.0 ) {
-    GLint numexts = 0;
-    glGetIntegerv(GL_NUM_EXTENSIONS, &numexts);
-    for ( int i=0;i<numexts;i++ ) {
+		GLint numexts = 0;
+		glGetIntegerv(GL_NUM_EXTENSIONS, &numexts);
+		for ( int i=0;i<numexts;i++ ) {
 			tmp += (const char *) glGetStringi(GL_EXTENSIONS, i);
 			tmp += " ";
 		}
 	} else {
- 	 tmp = (const char *) glGetString(GL_EXTENSIONS);
+ 		tmp = (const char *) glGetString(GL_EXTENSIONS);
 	}
 	vector<string> extensions;
 	split( extensions, tmp, is_any_of(" "));
@@ -89,4 +89,3 @@ bool report_glerror(const char * function)
   }
   return false;
 }
-

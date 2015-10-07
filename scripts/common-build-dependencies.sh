@@ -494,6 +494,8 @@ build_glproto()
 
 build_osmesa()
 {
+  # see also http://wiki.octave.org/OSMesa
+
   build_glproto
 
   version=$1

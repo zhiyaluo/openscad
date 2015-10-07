@@ -7,7 +7,9 @@
 #include "printutils.h"
 #include "renderer.h"
 
-#ifdef _WIN32
+#ifdef OSMESA
+#include <GL/glext.h>
+#elif defined(_WIN32)
 #include <GL/wglew.h>
 #elif !defined(__APPLE__)
 #include <GL/glxew.h>
@@ -216,7 +218,9 @@ void GLView::enable_opencsg_shaders()
     else if (GLEW_EXT_framebuffer_object && GLEW_EXT_packed_depth_stencil) {
       this->is_opencsg_capable = true;
     }
-#ifdef _WIN32
+#ifdef OSMESA
+    this->is_opencsg_capable = true;
+#elif defined(_WIN32)
     else if (WGLEW_ARB_pbuffer && WGLEW_ARB_pixel_format) this->is_opencsg_capable = true;
 #elif !defined(__APPLE__)
     else if (GLXEW_SGIX_pbuffer && GLXEW_SGIX_fbconfig) this->is_opencsg_capable = true;

@@ -75,8 +75,10 @@ static void gl_draw_triangle(GLint *shaderinfo, const Vector3d &p0, const Vector
 	}
 }
 
-void PolySet::render_surface(Renderer::csgmode_e csgmode, const Transform3d &m, GLint *shaderinfo) const
+void PolySet::render_surface(Renderer::csgmode_e csgmode, const Transform3d &m, int *shaderinfo_asint) const
 {
+	// this line saves us having to include GL/gl* in polyset.h
+	GLint * shaderinfo = static_cast<GLint *>( shaderinfo_asint );
 	PRINTD("Polyset render");
 	bool mirrored = m.matrix().determinant() < 0;
 #ifdef ENABLE_OPENCSG

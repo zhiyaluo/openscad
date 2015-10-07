@@ -112,9 +112,18 @@ build_glu()
   fi
   gzip -cd glu-$version.tar.gz | tar xf -
   cd glu-$version
-  ./autogen.sh --prefix=$DEPLOYDIR
+  MOREOPTS=
+  if [ "`echo $2 | grep osmesa`" ]; then
+    MOREOPTS='--with-sysroot='$DEPLOYDIR' --enable-osmesa --disable-silent-rules'
+  fi
+  echo ./autogen.sh --prefix=$DEPLOYDIR $MOREOPTS
+  ./autogen.sh --prefix=$DEPLOYDIR $MOREOPTS
   make -j$NUMCPU
   make install
+  if [ ! -e $DEPLOYDIR/lib/libGLU.so ]; then
+    echo "GLU failed"
+    exit
+  fi
 }
 
 build_qt4()
@@ -806,7 +815,16 @@ if [ "`uname | grep SunOS`" ]; then
 
   build_flex 2.5.39
   build_bison 3.0
-  #build_pkgconfig 0.28
+  build_pkgconfig 0.28
+
+  # take pkgconfig's m4 and use it to build glu later
+  pkgm4=`find $DEPLOYDIR/src -name pkg.m4 |  head -1`
+  echo copyin $pkgm4
+  if [ ! -e $DEPLOYDIR/share/aclocal ]; then
+    mkdir $DEPLOYDIR/share/aclocal
+  fi
+  cp $pkgm4 $DEPLOYDIR/share/aclocal/
+
   #build_libffi 3.0.13
   #build_git 2.4.9
   if [ "`cmake --version | grep 'version 2'`" ]; then
@@ -816,6 +834,7 @@ if [ "`uname | grep SunOS`" ]; then
   fi
   #libxml2 needs this for gzopen64 symbol
   build_zlib 1.2.8
+  build_glu 9.0.0 osmesa
   build_osmesa 11.0.2
 fi
 

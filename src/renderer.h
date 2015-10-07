@@ -1,6 +1,5 @@
 #pragma once
 
-#include "system-gl.h"
 #include "linalg.h"
 #include "memory.h"
 #include "colormap.h"
@@ -42,12 +41,12 @@ public:
 	};
 
 	virtual bool getColor(ColorMode colormode, Color4f &col) const;
-	virtual void setColor(const float color[4], GLint *shaderinfo = NULL) const;
-	virtual void setColor(ColorMode colormode, GLint *shaderinfo = NULL) const;
-	virtual void setColor(ColorMode colormode, const float color[4], GLint *shaderinfo = NULL) const;
+	virtual void setColor(const float color[4], int *shaderinfo_asint = NULL) const;
+	virtual void setColor(ColorMode colormode, int *shaderinfo_asint = NULL) const;
+	virtual void setColor(ColorMode colormode, const float color[4], int *shaderinfo_asint = NULL) const;
 	virtual void setColorScheme(const ColorScheme &cs);
 
-	static void render_surface(shared_ptr<const class Geometry> geom, csgmode_e csgmode, const Transform3d &m, GLint *shaderinfo = NULL);
+	static void render_surface(shared_ptr<const class Geometry> geom, csgmode_e csgmode, const Transform3d &m, int *shaderinfo_asint = NULL);
 	static void render_edges(shared_ptr<const Geometry> geom, csgmode_e csgmode);
 
 protected:
