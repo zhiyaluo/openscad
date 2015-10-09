@@ -5,6 +5,7 @@
 #include "Polygon2d.h"
 #include "colormap.h"
 #include "printutils.h"
+#include "system-gl.h"
 
 bool Renderer::getColor(Renderer::ColorMode colormode, Color4f &col) const
 {

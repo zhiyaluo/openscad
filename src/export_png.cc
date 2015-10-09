@@ -53,7 +53,7 @@ void export_png_preview_common(Tree &tree, Camera &cam, std::ostream &output, Pr
 {
 	PRINTD("export_png_preview_common");
 	CsgInfo csgInfo = CsgInfo();
-    csgInfo.compile_chains(tree);
+	csgInfo.compile_chains(tree);
 
 	try {
 		csgInfo.glview = new OffscreenView(cam.pixel_width, cam.pixel_height);
@@ -73,11 +73,12 @@ void export_png_preview_common(Tree &tree, Camera &cam, std::ostream &output, Pr
 	else
 #endif
 		csgInfo.glview->setRenderer(&thrownTogetherRenderer);
-#ifdef ENABLE_OPENCSG
+
 	BoundingBox bbox = csgInfo.glview->getRenderer()->getBoundingBox();
 	setupCamera(cam, bbox);
-
 	csgInfo.glview->setCamera(cam);
+
+#ifdef ENABLE_OPENCSG
 	OpenCSG::setContext(0);
 	OpenCSG::setOption(OpenCSG::OffscreenSetting, OpenCSG::FrameBufferObject);
 #endif

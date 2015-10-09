@@ -31,6 +31,15 @@
 #include "stl-utils.h"
 #ifdef ENABLE_OPENCSG
 #  include <opencsg.h>
+#else
+namespace OpenCSG {
+ enum Operation{ Intersection, Subtraction };
+ class Primitive{
+  public:
+  Primitive(Operation, unsigned int convexity) {};
+ };
+ void render(const std::vector<Primitive*>& primitives) {};
+};
 #endif
 
 class OpenCSGPrim : public OpenCSG::Primitive

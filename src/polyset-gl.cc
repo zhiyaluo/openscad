@@ -7,6 +7,7 @@
 #include <boost/foreach.hpp>
 // all GL functions grouped together here
 
+#include "system-gl.h"
 
 void draw_triangle(GLint *shaderinfo, const Vector3d &p0, const Vector3d &p1, const Vector3d &p2, double e0f, double e1f, double e2f, double z,
 bool mirror)

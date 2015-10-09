@@ -1,25 +1,6 @@
 #pragma once
 
-#ifdef NULLGL
-#define GLint int
-#define GLuint unsigned int
-inline void glColor4fv( float *c ) {}
-
-
-#elif defined(OSMESA)
-// we use the glew headers.... but not the glew library functions.
-#include <GL/glew.h>
-#define GLAPI extern
-#include <GL/osmesa.h>
-// note that the glu included here has to be compiled specifically for OSMESA. 
-#include <GL/glu.h>
-void osmesa_glew_noop() {};
-#define glewInit(x) osmesa_glew_noop(); 
-#define glewGetString(x) "OSMesa: glewGetString"
-#define glewIsSupported(x) true
-
-
-#elif !defined(OSMESA) && !defined(NULLGL)
+#if !defined(NULLGL) && !defined(OSMESA)
 #include <GL/glew.h>
 #ifdef __APPLE__
  #include <OpenGL/OpenGL.h>
@@ -28,7 +9,29 @@ void osmesa_glew_noop() {};
  #include <GL/glu.h>
 #endif
 
+
+#elif defined(NULLGL)
+#define GLint int
+#define GLuint unsigned int
+inline void glColor4fv( float *c ) {}
+
+
+#elif defined(OSMESA)
+// we need some functions from glext.h
+#define GL_GLEXT_PROTOTYPES 
+#include <GL/osmesa.h>
+//#include <GL/glext.h> already included by osmesa.h
+// note that the glu included here has to be compiled specifically for OSMESA. 
+#include <GL/glu.h>
+//#include <GL/glew.h>
+#define GLEW_OK 0
+#define glewInit(x) GLEW_OK
+#define glewGetString(x) "OSMesa: glew not enabled"
+#define glewIsSupported(x) true
+#define glewGetErrorString(x) "OSMesa: glew not enabled"
+
 #endif // NULLGL / OSMESA
+
 
 #include <string>
 

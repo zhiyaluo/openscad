@@ -81,6 +81,11 @@ a time, to avoid confusion.
 #ifndef GLEW_ARB_occlusion_query2
 #error GLEW library missing or version too old. See README.md. To force compile, run qmake CONFIG+=skip-version-check
 #endif // OSMESA
+#ifdef OSMESA
+#ifdef ENABLE_OPENCSG
+#error opencsg is probably incompatible with OSMESA
+#endif // enable opencsg
+#endif // osemsa
 #else
 
 

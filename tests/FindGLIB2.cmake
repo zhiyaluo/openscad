@@ -18,7 +18,9 @@ if (NOT $ENV{OPENSCAD_LIBRARIES} STREQUAL "")
   endif()
 endif()
 
-find_package(PkgConfig REQUIRED)
+if(NOT PKG_CONFIG_FOUND)
+  find_package(PkgConfig REQUIRED)
+endif()
 
 pkg_search_module(GLIB2 REQUIRED glib-2.0)
 message(STATUS "GLIB2_VERSION ${GLIB2_VERSION}")

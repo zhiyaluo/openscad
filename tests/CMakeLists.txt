@@ -108,6 +108,8 @@ endif()
 if(NULLGL)
   set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -DNULLGL")
   set(SKIP_IMAGEMAGICK "1") # we dont generate png, so nothing to compare
+elseif(OSMESA)
+  set(ENABLE_OPENCSG_FLAG "-UENABLE_OPENCSG")
 else()
   set(ENABLE_OPENCSG_FLAG "-DENABLE_OPENCSG")
 endif()
@@ -331,16 +333,15 @@ add_definitions(-DOSMESA)
 
 # OSMesa - see below under 'platform specifics' for more info
 if (OSMESA)
-  save_pkg_config_env()
   pkg_check_modules(OSMESA REQUIRED osmesa>=7.0.0)
   pkg_check_modules(GLU REQUIRED glu>=8.0.0)
-  restore_pkg_config_env()
   message(STATUS "OSMESA_INCLUDEDIR: ${OSMESA_INCLUDEDIR}")
   message(STATUS "OSMESA_LIBRARIES: ${OSMESA_LIBRARIES}")
   message(STATUS "GLU_INCLUDEDIR: ${GLU_INCLUDEDIR}")
   message(STATUS "GLU_LIBRARIES: ${GLU_LIBRARIES}")
   set(OPENGL_LIBRARIES ${GLU_LIBRARIES})
   message(STATUS "OPENGL_LIBRARIES: ${OPENGL_LIBRARIES}")
+  set(GLEW_LIBRARY "")
 endif()
 
 if (NOT OSMESA)
@@ -370,6 +371,7 @@ endif()
 endif() # not OSMESA
 
 # OpenCSG
+if (NOT OSMESA)
 if (NOT $ENV{OPENCSGDIR} STREQUAL "")
   set(OPENCSG_DIR "$ENV{OPENCSGDIR}")
 elseif (NOT $ENV{OPENSCAD_LIBRARIES} STREQUAL "")
@@ -391,6 +393,7 @@ if (NOT OPENCSG_INCLUDE_DIR)
   endif()
 endif()
 inclusion(OPENCSG_DIR OPENCSG_INCLUDE_DIR)
+endif() # OSMESA
 
 # GLEW
 
@@ -532,17 +535,17 @@ if(${CMAKE_CXX_COMPILER} MATCHES ".*clang.*" AND NOT ${CGAL_CXX_FLAGS_INIT} STRE
   string(REPLACE "FORTIFY_SOURCE=2" "FORTIFY_SOURCE=0" CGAL_CXX_FLAGS_INIT ${CGAL_CXX_FLAGS_INIT})
 endif()
 
-# GLib2
-
-find_package(GLIB2 2.2.0 REQUIRED)
-add_definitions(${GLIB2_DEFINITIONS})
-inclusion(GLIB2_DIR GLIB2_INCLUDE_DIRS)
-
-# libs for text() command
+# libs needing pkg-config
 save_pkg_config_env()
 
 if (DEFINED ENV{OPENSCAD_LIBRARIES})
-  set(ENV{PKG_CONFIG_PATH} "$ENV{OPENSCAD_LIBRARIES}/lib/pkgconfig")
+  set(ENV{PKG_CONFIG_PATH} "$ENV{OPENSCAD_LIBRARIES}/lib/pkgconfig:$ENV{PKG_CONFIG_PATH}")
+  message(STATUS $ENV{PKG_CONFIG_PATH})
+endif()
+
+pkg_check_modules(GLIB2 REQUIRED glib-2.0)
+if (GLIB2_VERSION)
+  message(STATUS "GLIB2 ${GLIB2_VERSION} found: ${GLIB2_INCLUDE_DIRS}")
 endif()
 
 pkg_check_modules(FONTCONFIG REQUIRED fontconfig>=2.8.0)
@@ -562,6 +565,7 @@ endif()
 
 restore_pkg_config_env()
 
+add_definitions(${GLIB2_CFLAGSS})
 add_definitions(${FONTCONFIG_CFLAGS})
 add_definitions(${FREETYPE_CFLAGS})
 add_definitions(${HARFBUZZ_CFLAGS})
