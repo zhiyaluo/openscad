@@ -106,6 +106,7 @@ AbstractNode *ImportModule::instantiate(const Context *ctx, const ModuleInstanti
 		if (ext == ".stl") actualtype = TYPE_STL;
 		else if (ext == ".off") actualtype = TYPE_OFF;
 		else if (ext == ".dxf") actualtype = TYPE_DXF;
+		else if (ext == ".obj") actualtype = TYPE_OBJ;
 	}
 
 	ImportNode *node = new ImportNode(inst, actualtype);
@@ -179,6 +180,77 @@ void read_stl_facet( std::ifstream &f, stl_facet &facet )
 	}
 	// we ignore attribute byte count
 #endif
+}
+
+/* Create PolySet from Wavefront(TM) OBJ format stream. return false on error,
+ true on success. Error during read can result in a mal-formed PolySet.
+ This code only reads simple vertices and faces, everything else is
+ ignored. Colors, Normals, and Textures are completely ignored. Face
+ point indexes with '/' textures will be read, but the textures are
+ ignored. */
+bool createPolySetFromOBJ( std::istream &in, PolySet &ps )
+{
+	PRINTD("OBJ import");
+	bool ok = true;
+	if (!in.good()) return false;
+	std::vector<Vector3d> vertlist;
+	std::string line,keyword,tmpline,faceindex;
+	int vertindex;
+	size_t pos;
+	double x,y,z;
+	while (std::getline(in, line)) {
+		// deal with the 'continued' line backslash feature of OBJ
+		while ((pos=line.find("\\"))!=std::string::npos) {
+			PRINTDB("line with backslash continuation: %s",line);
+			line = line.substr(0,pos==0 ? 0 : pos-1);
+			if (std::getline(in, tmpline)) {
+				PRINTDB(" adding tmpline %s",tmpline);
+				line += tmpline;
+			}
+		}
+		PRINTDB("line, full read: %s",line);
+		std::istringstream ss(line);
+		bool ok = (ss >> keyword);
+		if (ok && keyword == "v") {
+			if (!(ss >> x >> y >> z)) { return false; }
+			Vector3d v( x, y, z );
+			vertlist.push_back( v );
+			PRINTDB("vertex: %s",v.transpose());
+		}
+		else if (ok && keyword == "f") { // face
+			ps.append_poly();
+			while (ss >> faceindex) {
+				PRINTDB("face (vindexes) %s",faceindex);
+				if ((pos=faceindex.find("/"))!=std::string::npos) {
+					PRINTD(" vindex with /");
+					std::istringstream ss2(faceindex.substr(0,pos));
+					if (!(ss2 >> vertindex)) return false;
+				} else {
+					std::istringstream ss2(faceindex);
+					if (!(ss2 >> vertindex)) return false;
+				}
+				PRINTDB("vertindex %s",vertindex);
+				if (vertindex<0) {
+					PRINTD("<0, relative index");
+					vertindex = vertlist.size()+vertindex;
+				} else {
+					PRINTD(">0, absolute index (1based)");
+					vertindex--;
+				}
+				Vector3d v = vertlist[vertindex%vertlist.size()];
+				ps.append_vertex( v.x(), v.y(), v.z() );
+			}
+			if (ps.polygons.back().size()<3) {
+				PRINTD("Import OBJ: Polygon had less than 3 points");
+				return false;
+			}
+ 		}
+	}
+	if (ps.polygons.size()==0) {
+		PRINTD("Import OBJ: no polygons parsed");
+		ok = false;
+	}
+	return ok;
 }
 
 /*!
@@ -298,6 +370,17 @@ Geometry *ImportNode::createGeometry() const
 		g = dd.toPolygon2d();
 	}
 		break;
+	case TYPE_OBJ: {
+		PolySet *p = new PolySet(3);
+		g = p;
+		std::ifstream file(this->filename.c_str(), std::ios::in | std::ios::binary);
+		if (file.bad())
+			PRINTB("WARNING: Can't open import file '%s'.", this->filename);
+		if (!createPolySetFromOBJ( file, *p ))
+			PRINTB("WARNING: Error importing OBJ '%s'.", this->filename);
+		file.close();
+	}
+		break;
 	default:
 		PRINTB("ERROR: Unsupported file format while trying to import file '%s'", this->filename);
 		g = new PolySet(0);
@@ -336,5 +419,6 @@ void register_builtin_import()
 	Builtins::init("import_stl", new ImportModule(TYPE_STL));
 	Builtins::init("import_off", new ImportModule(TYPE_OFF));
 	Builtins::init("import_dxf", new ImportModule(TYPE_DXF));
+	Builtins::init("import_obj", new ImportModule(TYPE_OBJ));
 	Builtins::init("import", new ImportModule());
 }
