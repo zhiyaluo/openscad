@@ -39,7 +39,9 @@
 #include "PlatformUtils.h"
 #include "LibraryInfo.h"
 #include "nodedumper.h"
+#include "stackcheck.h"
 #include "CocoaUtils.h"
+#include "FontCache.h"
 
 #include <string>
 #include <vector>
@@ -77,13 +79,37 @@
 namespace po = boost::program_options;
 namespace fs = boost::filesystem;
 namespace Render { enum type { GEOMETRY, CGAL, OPENCSG, THROWNTOGETHER }; };
-std::string commandline_commands;
-std::string currentdir;
 using std::string;
 using std::vector;
 using boost::lexical_cast;
 using boost::bad_lexical_cast;
 using boost::is_any_of;
+
+std::string commandline_commands;
+std::string currentdir;
+static bool arg_info = false;
+static std::string arg_colorscheme;
+
+#define QUOTE(x__) # x__
+#define QUOTED(x__) QUOTE(x__)
+
+std::string openscad_shortversionnumber = QUOTED(OPENSCAD_SHORTVERSION);
+std::string openscad_versionnumber = QUOTED(OPENSCAD_VERSION);
+
+std::string openscad_displayversionnumber = 
+#ifdef OPENSCAD_COMMIT
+  QUOTED(OPENSCAD_VERSION)
+  " (git " QUOTED(OPENSCAD_COMMIT) ")";
+#else
+  QUOTED(OPENSCAD_SHORTVERSION);
+#endif
+
+std::string openscad_detailedversionnumber =
+#ifdef OPENSCAD_COMMIT
+  openscad_displayversionnumber;
+#else
+  openscad_versionnumber;
+#endif
 
 class Echostream : public std::ofstream
 {
@@ -100,7 +126,7 @@ public:
 	}
 };
 
-static void help(const char *progname)
+static void help(const char *progname, bool failure = false)
 {
   int tablen = strlen(progname)+8;
   char tabstr[tablen+1];
@@ -109,6 +135,7 @@ static void help(const char *progname)
 
 	PRINTB("Usage: %1% [ -o output_file [ -d deps_file ] ]\\\n"
          "%2%[ -m make_command ] [ -D var=val [..] ] \\\n"
+	 "%2%[ --help ] print this help message and exit \\\n"
          "%2%[ --version ] [ --info ] \\\n"
          "%2%[ --camera=translatex,y,z,rotx,y,z,dist | \\\n"
          "%2%  --camera=eyex,y,z,centerx,y,z ] \\\n"
@@ -127,15 +154,15 @@ static void help(const char *progname)
 #endif
          "%2%filename\n",
  				 progname % (const char *)tabstr);
-	exit(1);
+	exit(failure ? 1 : 0);
 }
 
 #define STRINGIFY(x) #x
 #define TOSTRING(x) STRINGIFY(x)
 static void version()
 {
-	PRINTB("OpenSCAD version %s\n", TOSTRING(OPENSCAD_VERSION));
-	exit(1);
+	PRINTB("OpenSCAD version %s", TOSTRING(OPENSCAD_VERSION));
+	exit(0);
 }
 
 static void info()
@@ -153,6 +180,25 @@ static void info()
 	std::cout << csgInfo.glview->getRendererInfo() << "\n";
 
 	exit(0);
+}
+
+/**
+ * Initialize gettext. This must be called after the appliation path was
+ * determined so we can lookup the resource path for the language translation
+ * files.
+ */
+void localization_init() {
+	fs::path po_dir(PlatformUtils::resourcePath("locale"));
+	std::string locale_path(po_dir.string());
+
+	if (fs::is_directory(locale_path)) {
+		setlocale(LC_ALL, "");
+		bindtextdomain("openscad", locale_path.c_str());
+		bind_textdomain_codeset("openscad", "UTF-8");
+		textdomain("openscad");
+	} else {
+		PRINT("Could not initialize localization.");
+	}
 }
 
 Camera get_camera(po::variables_map vm)
@@ -226,12 +272,10 @@ Camera get_camera(po::variables_map vm)
 	return camera;
 }
 
-#ifdef OPENSCAD_TESTING
-#undef OPENSCAD_QTGUI
-#else
-#define OPENSCAD_QTGUI 1
+#ifndef OPENSCAD_NOGUI
 #include <QApplication>
 #include <QSettings>
+#define OPENSCAD_QTGUI 1
 #endif
 static bool checkAndExport(shared_ptr<const Geometry> root_geom, unsigned nd,
 	enum FileFormat format, const char *filename)
@@ -248,6 +292,28 @@ static bool checkAndExport(shared_ptr<const Geometry> root_geom, unsigned nd,
 	return true;
 }
 
+void set_render_color_scheme(const std::string color_scheme, const bool exit_if_not_found)
+{
+	if (color_scheme.empty()) {
+		return;
+	}
+	
+	if (ColorMap::inst()->findColorScheme(color_scheme)) {
+		RenderSettings::inst()->colorscheme = color_scheme;
+		return;
+	}
+		
+	if (exit_if_not_found) {
+		PRINTB("Unknown color scheme '%s'. Valid schemes:", color_scheme);
+		BOOST_FOREACH (const std::string &name, ColorMap::inst()->colorSchemeNames()) {
+			PRINT(name);
+		}
+		exit(1);
+	} else {
+		PRINTB("Unknown color scheme '%s', using default '%s'.", arg_colorscheme % ColorMap::inst()->defaultColorSchemeName());
+	}
+}
+
 int cmdline(const char *deps_output_file, const std::string &filename, Camera &camera, const char *output_file, const fs::path &original_path, Render::type renderer, int argc, char ** argv )
 {
 #ifdef OPENSCAD_QTGUI
@@ -257,11 +323,17 @@ int cmdline(const char *deps_output_file, const std::string &filename, Camera &c
 	const std::string application_path = boosty::stringy(boosty::absolute(boost::filesystem::path(argv[0]).parent_path()));
 #endif	
 	PlatformUtils::registerApplicationPath(application_path);
-	parser_init(PlatformUtils::applicationPath());
+	parser_init();
+	localization_init();
+
 	Tree tree;
 #ifdef ENABLE_CGAL
 	GeometryEvaluator geomevaluator(tree);
 #endif
+	if (arg_info) {
+	    info();
+	}
+	
 	const char *stl_output_file = NULL;
 	const char *off_output_file = NULL;
 	const char *amf_output_file = NULL;
@@ -293,6 +365,8 @@ int cmdline(const char *deps_output_file, const std::string &filename, Camera &c
 		return 1;
 	}
 
+	set_render_color_scheme(arg_colorscheme, true);
+	
 	// Top context - this context only holds builtins
 	ModuleContext top_ctx;
 	top_ctx.registerBuiltin();
@@ -309,7 +383,7 @@ int cmdline(const char *deps_output_file, const std::string &filename, Camera &c
 	AbstractNode *absolute_root_node;
 	shared_ptr<const Geometry> root_geom;
 
-	handle_dep(filename.c_str());
+	handle_dep(filename);
 
 	std::ifstream ifs(filename.c_str());
 	if (!ifs.is_open()) {
@@ -393,14 +467,12 @@ int cmdline(const char *deps_output_file, const std::string &filename, Camera &c
 			// echo or OpenCSG png -> don't necessarily need geometry evaluation
 		} else {
 			root_geom = geomevaluator.evaluateGeometry(*tree.root(), true);
-			if (!root_geom) {
-				PRINT("No top-level object found.");
-				return 1;
-			}
+			if (!root_geom) root_geom.reset(new CGAL_Nef_polyhedron());
 			if (renderer == Render::CGAL && root_geom->getDimension() == 3) {
 				const CGAL_Nef_polyhedron *N = dynamic_cast<const CGAL_Nef_polyhedron*>(root_geom.get());
 				if (!N) {
-					root_geom.reset(CGALUtils::createNefPolyhedronFromGeometry(*root_geom));
+					N = CGALUtils::createNefPolyhedronFromGeometry(*root_geom);
+					root_geom.reset(N);
 					PRINT("Converted to Nef polyhedron");
 				}
 			}
@@ -494,6 +566,7 @@ Q_IMPORT_PLUGIN(qtaccessiblewidgets)
 #endif // MINGW64/MINGW32/MSCVER
 #include "MainWindow.h"
 #include "launchingscreen.h"
+#include "qsettings.h"
   #ifdef __APPLE__
   #include "EventFilter.h"
   #endif
@@ -501,6 +574,10 @@ Q_IMPORT_PLUGIN(qtaccessiblewidgets)
 #include <QDir>
 #include <QFileInfo>
 #include <QMetaType>
+#include <QTextCodec>
+#include <QProgressDialog>
+#include <QFutureWatcher>
+#include <QtConcurrentRun>
 
 Q_DECLARE_METATYPE(shared_ptr<const Geometry>);
 
@@ -530,6 +607,32 @@ bool QtUseGUI()
 	return useGUI;
 }
 
+void dialogThreadFunc(FontCacheInitializer *initializer)
+{
+	 initializer->run();
+}
+
+void dialogInitHandler(FontCacheInitializer *initializer, void *)
+{
+	MainWindow *mainw = *MainWindow::getWindows()->begin();
+
+	QFutureWatcher<void> futureWatcher;
+	QObject::connect(&futureWatcher, SIGNAL(finished()), mainw, SLOT(hideFontCacheDialog()));
+
+	QFuture<void> future = QtConcurrent::run(boost::bind(dialogThreadFunc, initializer));
+	futureWatcher.setFuture(future);
+
+	// We don't always get the started() signal, so we start manually
+	QMetaObject::invokeMethod(mainw, "showFontCacheDialog");
+
+	// Block, in case we're in a separate thread, or the dialog was closed by the user
+	futureWatcher.waitForFinished();
+
+	// We don't always receive the finished signal. We still need the signal to break 
+	// out of the exec() though.
+	QMetaObject::invokeMethod(mainw, "hideFontCacheDialog");
+}
+
 int gui(vector<string> &inputFiles, const fs::path &original_path, int argc, char ** argv)
 {
 #ifdef Q_OS_MACX
@@ -540,6 +643,9 @@ int gui(vector<string> &inputFiles, const fs::path &original_path, int argc, cha
     }
 #endif
 	QApplication app(argc, argv, true); //useGUI);
+	// remove ugly frames in the QStatusBar when using additional widgets
+	app.setStyleSheet("QStatusBar::item { border: 0px solid black; }");
+
 #ifdef Q_OS_MAC
 	app.installEventFilter(new EventFilter(&app));
 #endif
@@ -550,6 +656,14 @@ int gui(vector<string> &inputFiles, const fs::path &original_path, int argc, cha
 	QCoreApplication::setApplicationVersion(TOSTRING(OPENSCAD_VERSION));
 #if QT_VERSION >= QT_VERSION_CHECK(5, 0, 0)
 	QGuiApplication::setApplicationDisplayName("OpenSCAD");
+	QCoreApplication::setAttribute(Qt::AA_UseHighDpiPixmaps);
+#else
+	QTextCodec::setCodecForCStrings(QTextCodec::codecForName("UTF-8"));
+#endif
+#ifdef OPENSCAD_SNAPSHOT
+	app.setWindowIcon(QIcon(":/icons/openscad-nightly.png"));
+#else
+	app.setWindowIcon(QIcon(":/icons/openscad.png"));
 #endif
 	
 	// Other global settings
@@ -558,10 +672,23 @@ int gui(vector<string> &inputFiles, const fs::path &original_path, int argc, cha
 	const QString &app_path = app.applicationDirPath();
 	PlatformUtils::registerApplicationPath(app_path.toLocal8Bit().constData());
 
-  parser_init(PlatformUtils::applicationPath());
+	FontCache::registerProgressHandler(dialogInitHandler);
+
+	parser_init();
+
+	QSettings settings;
+	if (settings.value("advanced/localization", true).toBool()) {
+	        localization_init();
+	}
 
 #ifdef Q_OS_MAC
 	installAppleEventHandlers();
+#endif
+
+#ifdef Q_OS_WIN
+    QSettings reg_setting(QLatin1String("HKEY_CURRENT_USER"), QSettings::NativeFormat);
+    QString appPath = QDir::toNativeSeparators(app.applicationFilePath() + QLatin1String(",1"));
+    reg_setting.setValue(QLatin1String("Software/Classes/OpenSCAD_File/DefaultIcon/Default"),QVariant(appPath));
 #endif
 
 #ifdef OPENSCAD_UPDATER
@@ -571,27 +698,42 @@ int gui(vector<string> &inputFiles, const fs::path &original_path, int argc, cha
 	updater->init();
 #endif
 
+	QGLFormat fmt;
 #if 0 /*** disabled by clifford wolf: adds rendering artefacts with OpenCSG ***/
 	// turn on anti-aliasing
-	QGLFormat f;
-	f.setSampleBuffers(true);
-	f.setSamples(4);
-	QGLFormat::setDefaultFormat(f);
+	fmt.setSampleBuffers(true);
+	fmt.setSamples(4);
 #endif
+	// The default SwapInterval causes very bad interactive behavior as
+	// waiting for the buffer swap seems to block mouse events. So the
+	// effect is that we can process mouse events at the frequency of
+	// the screen retrace interval causing them to queue up.
+	// (see https://bugreports.qt-project.org/browse/QTBUG-39370
+	fmt.setSwapInterval(0);
+	QGLFormat::setDefaultFormat(fmt);
+
+	set_render_color_scheme(arg_colorscheme, false);
+	
 	bool noInputFiles = false;
 	if (!inputFiles.size()) {
 		noInputFiles = true;
 		inputFiles.push_back("");
 	}
 
-	QSettings settings;
 	QVariant showOnStartup = settings.value("launcher/showOnStartup");
 	if (noInputFiles && (showOnStartup.isNull() || showOnStartup.toBool())) {
 		LaunchingScreen *launcher = new LaunchingScreen();
 		int dialogResult = launcher->exec();
 		if (dialogResult == QDialog::Accepted) {
-			inputFiles.clear();
-			inputFiles.push_back(launcher->selectedFile().toStdString());
+			QStringList files = launcher->selectedFiles();
+			// If nothing is selected in the launching screen, leave
+			// the "" dummy in inputFiles to open an empty MainWindow.
+			if (!files.empty()) {
+				inputFiles.clear();
+				BOOST_FOREACH(const QString &f, files) {
+					inputFiles.push_back(f.toStdString());
+				}
+			}
 			delete launcher;
 		} else {
 			return 0;
@@ -599,13 +741,14 @@ int gui(vector<string> &inputFiles, const fs::path &original_path, int argc, cha
 	}
 
 	MainWindow *mainwin;
-#ifdef ENABLE_MDI
-	BOOST_FOREACH(const string &infile, inputFiles) {
-		mainwin = new MainWindow(assemblePath(original_path, infile));
+	bool isMdi = settings.value("advanced/mdi", true).toBool();
+	if (isMdi) {
+	    BOOST_FOREACH(const string &infile, inputFiles) {
+		    mainwin = new MainWindow(assemblePath(original_path, infile));
+	    }
+	} else {
+	    mainwin = new MainWindow(assemblePath(original_path, inputFiles[0]));
 	}
-#else
-	mainwin = new MainWindow(assemblePath(original_path, inputFiles[0]));
-#endif
 
 	app.connect(&app, SIGNAL(lastWindowClosed()), &app, SLOT(quit()));
 	int rc = app.exec();
@@ -628,11 +771,14 @@ int main(int argc, char **argv)
 {
 	int rc = 0;
 	bool isGuiLaunched = getenv("GUI_LAUNCHED") != 0;
+	StackCheck::inst()->init();
+	
 #ifdef Q_OS_MAC
 	if (isGuiLaunched) set_output_handler(CocoaUtils::nslog, NULL);
 #else
 	PlatformUtils::ensureStdIO();
 #endif
+
 #ifdef ENABLE_CGAL
 	// Causes CGAL errors to abort directly instead of throwing exceptions
 	// (which we don't catch). This gives us stack traces without rerunning in gdb.
@@ -660,6 +806,7 @@ int main(int argc, char **argv)
 		("projection", po::value<string>(), "(o)rtho or (p)erspective when exporting png")
 		("colorscheme", po::value<string>(), "colorscheme")
 		("debug", po::value<string>(), "special debug info")
+		("quiet,q", "quiet mode (don't print anything *except* errors)")
 		("o,o", po::value<string>(), "out-file")
 		("s,s", po::value<string>(), "stl-file")
 		("x,x", po::value<string>(), "dxf-file")
@@ -687,7 +834,7 @@ int main(int argc, char **argv)
 	}
 	catch(const std::exception &e) { // Catches e.g. unknown options
 		PRINTB("%s\n", e.what());
-		help(argv[0]);
+		help(argv[0], true);
 	}
 
 	OpenSCAD::debug = "";
@@ -695,9 +842,12 @@ int main(int argc, char **argv)
 		OpenSCAD::debug = vm["debug"].as<string>();
 		PRINTB("Debug on. --debug=%s",OpenSCAD::debug);
 	}
+	if (vm.count("quiet")) {
+		OpenSCAD::quiet = true;
+	}
 	if (vm.count("help")) help(argv[0]);
 	if (vm.count("version")) version();
-	if (vm.count("info")) info();
+	if (vm.count("info")) arg_info = true;
 
 	Render::type renderer = Render::OPENCSG;
 	if (vm.count("preview")) {
@@ -715,27 +865,25 @@ int main(int argc, char **argv)
 
 	if (vm.count("o")) {
 		// FIXME: Allow for multiple output files?
-		if (output_file) help(argv[0]);
+		if (output_file) help(argv[0], true);
 		output_file = vm["o"].as<string>().c_str();
 	}
 	if (vm.count("s")) {
-		printDeprecation("DEPRECATED: The -s option is deprecated. Use -o instead.\n");
-		if (output_file) help(argv[0]);
+		printDeprecation("The -s option is deprecated. Use -o instead.\n");
+		if (output_file) help(argv[0], true);
 		output_file = vm["s"].as<string>().c_str();
 	}
 	if (vm.count("x")) { 
-		printDeprecation("DEPRECATED: The -x option is deprecated. Use -o instead.\n");
-		if (output_file) help(argv[0]);
+		printDeprecation("The -x option is deprecated. Use -o instead.\n");
+		if (output_file) help(argv[0], true);
 		output_file = vm["x"].as<string>().c_str();
 	}
 	if (vm.count("d")) {
-		if (deps_output_file)
-			help(argv[0]);
+		if (deps_output_file) help(argv[0], true);
 		deps_output_file = vm["d"].as<string>().c_str();
 	}
 	if (vm.count("m")) {
-		if (make_command)
-			help(argv[0]);
+		if (make_command) help(argv[0], true);
 		make_command = vm["m"].as<string>().c_str();
 	}
 
@@ -756,23 +904,9 @@ int main(int argc, char **argv)
 	if (vm.count("input-file"))	{
 		inputFiles = vm["input-file"].as<vector<string> >();
 	}
-#ifndef ENABLE_MDI
-	if (inputFiles.size() > 1) {
-		help(argv[0]);
-	}
-#endif
 
 	if (vm.count("colorscheme")) {
-		std::string colorscheme = vm["colorscheme"].as<string>();
-		if (ColorMap::inst()->findColorScheme(colorscheme)) {
-			RenderSettings::inst()->colorscheme = colorscheme;
-		} else {
-			PRINT("Unknown color scheme. Valid schemes:");
-			BOOST_FOREACH (const std::string &name, ColorMap::inst()->colorSchemeNames()) {
-				PRINT(name);
-			}
-			exit(1);
-		}
+		arg_colorscheme = vm["colorscheme"].as<string>();
 	}
 
 	currentdir = boosty::stringy(fs::current_path());
@@ -786,10 +920,11 @@ int main(int argc, char **argv)
 	bool cmdlinemode = false;
 	if (output_file) { // cmd-line mode
 		cmdlinemode = true;
-		if (!inputFiles.size()) help(argv[0]);
+		if (!inputFiles.size()) help(argv[0], true);
 	}
 
-	if (cmdlinemode) {
+	if (arg_info || cmdlinemode) {
+		if (inputFiles.size() > 1) help(argv[0], true);
 		rc = cmdline(deps_output_file, inputFiles[0], camera, output_file, original_path, renderer, argc, argv);
 	}
 	else if (QtUseGUI()) {
@@ -797,11 +932,10 @@ int main(int argc, char **argv)
 	}
 	else {
 		PRINT("Requested GUI mode but can't open display!\n");
-		help(argv[0]);
+		help(argv[0], true);
 	}
 
 	Builtins::instance(true);
 
 	return rc;
 }
-

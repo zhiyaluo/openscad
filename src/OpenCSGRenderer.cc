@@ -31,7 +31,6 @@
 #include "stl-utils.h"
 #ifdef ENABLE_OPENCSG
 #  include <opencsg.h>
-#endif
 
 class OpenCSGPrim : public OpenCSG::Primitive
 {
@@ -48,6 +47,8 @@ public:
 		glPopMatrix();
 	}
 };
+
+#endif
 
 OpenCSGRenderer::OpenCSGRenderer(CSGChain *root_chain, CSGChain *highlights_chain,
 																 CSGChain *background_chain, GLint *shaderinfo)
@@ -74,6 +75,7 @@ void OpenCSGRenderer::draw(bool /*showfaces*/, bool showedges) const
 void OpenCSGRenderer::renderCSGChain(CSGChain *chain, GLint *shaderinfo, 
 																		 bool highlight, bool background) const
 {
+#ifdef ENABLE_OPENCSG
 	std::vector<OpenCSG::Primitive*> primitives;
 	size_t j = 0;
 	for (size_t i = 0;; i++) {
@@ -90,7 +92,12 @@ void OpenCSGRenderer::renderCSGChain(CSGChain *chain, GLint *shaderinfo,
 				const Color4f &c = j_obj.color;
 				glPushMatrix();
 				glMultMatrixd(j_obj.matrix.data());
-				csgmode_e csgmode = j_obj.type == CSGTerm::TYPE_DIFFERENCE ? CSGMODE_DIFFERENCE : CSGMODE_NORMAL;
+				csgmode_e csgmode = csgmode_e(
+					(highlight ? 
+					 CSGMODE_HIGHLIGHT :
+					 (background ? CSGMODE_BACKGROUND : CSGMODE_NORMAL)) |
+					(j_obj.type == CSGTerm::TYPE_DIFFERENCE ? CSGMODE_DIFFERENCE : 0));
+
 				ColorMode colormode = COLORMODE_NONE;
 				if (background) {
 					if (j_obj.flag & CSGTerm::FLAG_HIGHLIGHT) {
@@ -99,11 +106,9 @@ void OpenCSGRenderer::renderCSGChain(CSGChain *chain, GLint *shaderinfo,
 					else {
 						colormode = COLORMODE_BACKGROUND;
 					}
-					csgmode = csgmode_e(csgmode + 10);
 				} else if (j_obj.type == CSGTerm::TYPE_DIFFERENCE) {
 					if (j_obj.flag & CSGTerm::FLAG_HIGHLIGHT) {
 						colormode = COLORMODE_HIGHLIGHT;
-						csgmode = csgmode_e(csgmode + 20);
 					}
 					else {
 						colormode = COLORMODE_CUTOUT;
@@ -111,7 +116,6 @@ void OpenCSGRenderer::renderCSGChain(CSGChain *chain, GLint *shaderinfo,
 				} else {
 					if (j_obj.flag & CSGTerm::FLAG_HIGHLIGHT) {
 						colormode = COLORMODE_HIGHLIGHT;
-						csgmode = csgmode_e(csgmode + 20);
 					 }
 					else {
 						colormode = COLORMODE_MATERIAL;
@@ -139,13 +143,17 @@ void OpenCSGRenderer::renderCSGChain(CSGChain *chain, GLint *shaderinfo,
 			
 			prim->geom = i_obj.geom;
 			prim->m = i_obj.matrix;
-			prim->csgmode = i_obj.type == CSGTerm::TYPE_DIFFERENCE ? CSGMODE_DIFFERENCE : CSGMODE_NORMAL;
-			if (highlight) prim->csgmode = csgmode_e(prim->csgmode + 20);
-			else if (background) prim->csgmode = csgmode_e(prim->csgmode + 10);
+			prim->csgmode = csgmode_e(
+				(highlight ? 
+				 CSGMODE_HIGHLIGHT :
+				 (background ? CSGMODE_BACKGROUND : CSGMODE_NORMAL)) |
+				(i_obj.type == CSGTerm::TYPE_DIFFERENCE ? CSGMODE_DIFFERENCE : 0));
+
 			primitives.push_back(prim);
 		}
 	}
 	std::for_each(primitives.begin(), primitives.end(), del_fun<OpenCSG::Primitive>());
+#endif
 }
 
 BoundingBox OpenCSGRenderer::getBoundingBox() const

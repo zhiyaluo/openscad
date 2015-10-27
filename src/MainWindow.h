@@ -1,5 +1,6 @@
 #pragma once
 
+#include "qtgettext.h"
 #include <QMainWindow>
 #include <QIcon>
 #include "ui_MainWindow.h"
@@ -13,6 +14,8 @@
 #include <vector>
 #include <QMutex>
 #include <QSet>
+#include <QTime>
+#include <QIODevice>
 
 enum export_type_e {
 	EXPORT_TYPE_UNKNOWN,
@@ -34,11 +37,17 @@ public:
 	class Preferences *prefs;
 
 	QTimer *animate_timer;
-	double tval, fps, fsteps;
+	int anim_step;
+	int anim_numsteps;
+	double anim_tval;
+	bool anim_dumping;
+	int anim_dump_start_step;
 
 	QTimer *autoReloadTimer;
 	std::string autoReloadId;
 	QTimer *waitAfterReloadTimer;
+
+	QTime renderingTime;
 
 	ModuleContext top_ctx;
 	FileModule *root_module;      // Result of parsing
@@ -68,11 +77,15 @@ public:
 	QAction *actionRecentFile[UIUtils::maxRecentFiles];
         QMap<QString, QString> knownFileExtensions;
 
+        QLabel *versionLabel;
         QWidget *editorDockTitleWidget;
         QWidget *consoleDockTitleWidget;
         
 	QString editortype;	
 	bool useScintilla;
+
+        int compileErrors;
+        int compileWarnings;
 
 	MainWindow(const QString &filename);
 	~MainWindow();
@@ -81,7 +94,10 @@ protected:
 	void closeEvent(QCloseEvent *event);
 
 private slots:
-	void updatedFps();
+	void updatedAnimTval();
+	void updatedAnimFps();
+	void updatedAnimSteps();
+	void updatedAnimDump(bool checked);
 	void updateTVal();
         void updateMdiMode(bool mdi);
         void updateUndockMode(bool undockMode);
@@ -91,7 +107,10 @@ private slots:
 	void setColorScheme(const QString &cs);
 	void showProgress();
 	void openCSGSettingsChanged();
+	void consoleOutput(const QString &msg);
+
 private:
+        void initActionIcon(QAction *action, const char *darkResource, const char *lightResource);
 	void openFile(const QString &filename);
         void handleFileDrop(const QString &filename);
 	void refreshDocument();
@@ -99,9 +118,11 @@ private:
 	void updateTemporalVariables();
 	bool fileChangedOnDisk();
 	void compileTopLevelDocument();
+        void updateCompileResult();
 	void compile(bool reload, bool forcedone = false);
 	void compileCSG(bool procevents);
 	bool maybeSave();
+        void saveError(const QIODevice &file, const std::string &msg);
 	bool checkEditorModified();
 	QString dumpCSGTree(AbstractNode *root);
 	static void consoleOutput(const std::string &msg, void *userdata);
@@ -113,6 +134,7 @@ private:
 	void show_examples();
 	void setDockWidgetTitle(QDockWidget *dockWidget, QString prefix, bool topLevel);
         void addKeyboardShortCut(const QList<QAction *> &actions);
+        void updateStatusBar(class ProgressWidget *progressWidget);
 
 	EditorInterface *editor;
 
@@ -144,6 +166,7 @@ private slots:
 	void hideToolbars();
 	void hideEditor();
 	void hideConsole();
+	void showConsole();
 
 private slots:
 	void selectFindType(int);
@@ -184,6 +207,7 @@ private slots:
 	void actionExportSVG();
 	void actionExportCSG();
 	void actionExportImage();
+	void actionCopyViewport();
 	void actionFlushCaches();
 
 public:
@@ -196,6 +220,7 @@ public slots:
 	void actionReloadRenderPreview();
         void on_editorDock_visibilityChanged(bool);
         void on_consoleDock_visibilityChanged(bool);
+        void on_toolButtonCompileResultClose_clicked();
         void editorTopLevelChanged(bool);
         void consoleTopLevelChanged(bool);
 #ifdef ENABLE_OPENCSG
@@ -209,6 +234,7 @@ public slots:
 	void viewModeShowEdges();
 	void viewModeShowAxes();
 	void viewModeShowCrosshairs();
+	void viewModeShowScaleProportional();
 	void viewModeAnimate();
 	void viewAngleTop();
 	void viewAngleBottom();
@@ -229,6 +255,7 @@ public slots:
 	void helpAbout();
 	void helpHomepage();
 	void helpManual();
+	void helpCheatSheet();
 	void helpLibrary();
 	void helpFontInfo();
 	void quit();
@@ -236,6 +263,8 @@ public slots:
 	void waitAfterReload();
 	void autoReloadSet(bool);
 	void setContentsChanged();
+	void showFontCacheDialog();
+	void hideFontCacheDialog();
 
 private:
 	static void report_func(const class AbstractNode*, void *vp, int mark);
@@ -243,6 +272,7 @@ private:
 	static bool undockMode;
 	static bool reorderMode;
 	static QSet<MainWindow*> *windows;
+	static class QProgressDialog *fontCacheDialog;
 
 	char const * afterCompileSlot;
 	bool procevents;
