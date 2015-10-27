@@ -28,6 +28,7 @@
 #include "printutils.h"
 #include "polyset.h"
 #include "polyset-utils.h"
+#include "GeometryUtils.h"
 #include "dxfdata.h"
 
 #include <boost/foreach.hpp>
@@ -41,7 +42,7 @@
 #include "cgal.h"
 #include "cgalutils.h"
 
-///// Tools for ASCII Decimal based formats (almost every format)
+///// Tools for ASCII Decimal based formats (OBJ, STL, AMF, OFF, &c)
 // 3d coordinate represented in ASCII base-10 Decimal
 // example = "5.2 12.1 13.0" x=5.2 y=12.1 z=13.0
 typedef std::string ascii_vertex;
@@ -56,7 +57,7 @@ typedef struct ascii_triangle {
 } ascii_triangle_t;
 
 // backwards compatabile
-typdef ascii_triangle_t triangle;
+typedef ascii_triangle_t triangle;
 
 /*struct triangle {
     std::string vs1;
@@ -156,7 +157,7 @@ void PolySet_to_ASCII_Faces( const PolySet &ps, std::vector<ascii_vertex> &verti
 	faces.clear();
 	std::map<ascii_vertex,int> vertmap;
 	for (size_t i = 0; i < ps.polygons.size(); i++) {
-		const PolySet::Polygon *poly = &ps.polygons[i];
+		const Polygon *poly = &ps.polygons[i];
 		ascii_face face;
 		std::map<ascii_vertex,int> dup_detect;
 		for (size_t j = 0; j < poly->size(); j++) {
