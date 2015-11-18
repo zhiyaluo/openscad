@@ -2,6 +2,7 @@ language: cpp
 cache: apt
 compiler: gcc
 sudo: false
+dist: trusty
 
 notifications:
   irc:
