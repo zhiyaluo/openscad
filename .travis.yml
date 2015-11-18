@@ -18,6 +18,7 @@ addons:
     - libgmp3-dev
     - libmpfr-dev
     - libcgal-dev
+    - libglew-dev
   coverity_scan:
     project:
       name: "openscad/openscad"
