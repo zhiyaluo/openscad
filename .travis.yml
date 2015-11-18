@@ -2,7 +2,6 @@ language: cpp
 cache: apt
 compiler: gcc
 sudo: false
-dist: trusty
 
 notifications:
   irc:
@@ -15,9 +14,7 @@ notifications:
 addons:
   apt:
     packages:
-    - libgmp3-dev
     - libeigen3-dev
-    - libharfbuzz-dev
 
 #before_install:
 # - echo 'yes' | sudo add-apt-repository ppa:chrysn/openscad
