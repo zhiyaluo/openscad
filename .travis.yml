@@ -14,6 +14,14 @@ addons:
   apt:
     packages:
     - libeigen3-dev
+  coverity_scan:
+    project:
+      name: "openscad/openscad"
+      description: "The Programmers Solid 3D CAD Modeller"
+    notification_email: dev@openscad.org
+    build_command_prepend: qmake
+    build_command: make
+    branch_pattern: coverity_scan
 
 #before_install:
 # - echo 'yes' | sudo add-apt-repository ppa:chrysn/openscad
@@ -84,12 +92,3 @@ env:
  # scan.coverity token
  - secure: "CGHkiv3Aki3HF2xiNPbPEqB66Xcz8HrdhSpFYjQFqHsrseIXOmZGLaIdnkwCqoIHUMFVtqGVGSxRhhrSOrAq+uOgc6Wyst8u6ThN3HhRbvQgF2v7XvtGsTiAObxLvj5V91gqQwHxWPHf948Cm12QQgmEd+dbhyjPWsmVMDb4gNk="
  
-addons:
-  coverity_scan:
-    project:
-      name: "openscad/openscad"
-      description: "The Programmers Solid 3D CAD Modeller"
-    notification_email: dev@openscad.org
-    build_command_prepend: qmake
-    build_command: make
-    branch_pattern: coverity_scan
