@@ -14,8 +14,10 @@ addons:
   apt:
     packages:
     - libeigen3-dev
-    - libgmp3-dev
     - libharfbuzz-dev
+    - libgmp3-dev
+    - libmpfr-dev
+    - libcgal-dev
   coverity_scan:
     project:
       name: "openscad/openscad"
