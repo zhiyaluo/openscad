@@ -14,6 +14,8 @@ addons:
   apt:
     packages:
     - libeigen3-dev
+    - libgmp3-dev
+    - libharfbuzz-dev
   coverity_scan:
     project:
       name: "openscad/openscad"
@@ -45,8 +47,7 @@ before_script:
  - base64 --decode --ignore-garbage ~/.ssh/openscad_rsa_base64 > ~/.ssh/id_rsa
  - chmod 600 ~/.ssh/id_rsa
 
-#script: if [ "${COVERITY_SCAN_BRANCH}" != 1 ]; then ./scripts/travis-ci.sh ; fi
-script: dpkg -l libeigen3-dev
+script: if [ "${COVERITY_SCAN_BRANCH}" != 1 ]; then ./scripts/travis-ci.sh ; fi
 
 env:
  global:
