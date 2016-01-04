@@ -36,12 +36,16 @@ public:
 	void render_edges(Renderer::csgmode_e csgmode) const;
 
 	void transform(const Transform3d &mat);
+	const Transform3d &getTransform() const { return matrix; }
+	void applyTransform();
+
 	void resize(Vector3d newsize, const Eigen::Matrix<bool,3,1> &autosize);
 
 	bool is_convex() const;
 	boost::tribool convexValue() const { return this->convex; }
 
 private:
+	Transform3d matrix;
 	Polygon2d polygon;
 	unsigned int dim;
 	mutable boost::tribool convex;

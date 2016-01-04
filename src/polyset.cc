@@ -45,11 +45,11 @@
 
  */
 
-PolySet::PolySet(unsigned int dim, boost::tribool convex) : dim(dim), convex(convex), dirty(false)
+PolySet::PolySet(unsigned int dim, boost::tribool convex) : matrix(Transform3d::Identity()), dim(dim), convex(convex), dirty(true)
 {
 }
 
-PolySet::PolySet(const Polygon2d &origin) : polygon(origin), dim(2), convex(unknown), dirty(false)
+PolySet::PolySet(const Polygon2d &origin) : matrix(Transform3d::Identity()), polygon(origin), dim(2), convex(unknown), dirty(true)
 {
 }
 
@@ -86,7 +86,7 @@ BoundingBox PolySet::getBoundingBox() const
 		this->bbox.setNull();
 		BOOST_FOREACH(const Polygon &poly, polygons) {
 			BOOST_FOREACH(const Vector3d &p, poly) {
-				this->bbox.extend(p);
+				this->bbox.extend(this->matrix * p);
 			}
 		}
 		this->dirty = false;
@@ -103,26 +103,23 @@ size_t PolySet::memsize() const
 	return mem;
 }
 
-void PolySet::append(const PolySet &ps)
-{
-	this->polygons.insert(this->polygons.end(), ps.polygons.begin(), ps.polygons.end());
-	if (!dirty && !this->bbox.isNull()) {
-		this->bbox.extend(ps.getBoundingBox());
-	}
-}
-
 void PolySet::transform(const Transform3d &mat)
 {
+	this->matrix = mat * this->matrix;
+}
+
+void PolySet::applyTransform()
+{
 	// If mirroring transform, flip faces to avoid the object to end up being inside-out
-	bool mirrored = mat.matrix().determinant() < 0;
+	bool mirrored = this->matrix.matrix().determinant() < 0;
 
 	BOOST_FOREACH(Polygon &p, this->polygons){
 		BOOST_FOREACH(Vector3d &v, p) {
-			v = mat * v;
+			v = this->matrix * v;
 		}
 		if (mirrored) std::reverse(p.begin(), p.end());
 	}
-	this->dirty = true;
+	this->matrix.setIdentity();
 }
 
 bool PolySet::is_convex() const {
@@ -148,14 +145,7 @@ void PolySet::resize(Vector3d newsize, const Eigen::Matrix<bool,3,1> &autosize)
 	Vector3d newscale;
 	for (int i=0;i<3;i++) newscale[i] = !autosize[i] || (newsize[i] > 0) ? scale[i] : autoscale;
 	
-	Transform3d t;
-	t.matrix() << 
-    newscale[0], 0, 0, 0,
-    0, newscale[1], 0, 0,
-    0, 0, newscale[2], 0,
-    0, 0, 0, 1;
-
-	this->transform(t);
+	this->matrix.prescale(newscale);
 }
 
 /*!

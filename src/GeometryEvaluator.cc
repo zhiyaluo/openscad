@@ -593,6 +593,7 @@ Response GeometryEvaluator::visit(State &state, const TransformNode &node)
 							if (res.isConst()) newps.reset(new PolySet(*ps));
 							else newps = dynamic_pointer_cast<PolySet>(res.ptr());
 							newps->transform(node.matrix);
+							newps->applyTransform(); // FIXME: Rather do this on demand to let transformations accumulate in the matrix
 							geom = newps;
 						}
 						else {
@@ -837,6 +838,7 @@ static Geometry *rotatePolygon(const RotateExtrudeNode &node, const Polygon2d &p
 		PolySet *ps_start = poly.tessellate(); // starting face
 		Transform3d rot(Eigen::AngleAxisd(M_PI/2, Vector3d::UnitX()));
 		ps_start->transform(rot);
+		ps_start->applyTransform();
 		// Flip vertex ordering
 		if (!flip_faces) {
 			BOOST_FOREACH(Polygon &p, ps_start->polygons) {
@@ -849,6 +851,7 @@ static Geometry *rotatePolygon(const RotateExtrudeNode &node, const Polygon2d &p
 		PolySet *ps_end = poly.tessellate();
 		Transform3d rot2(Eigen::AngleAxisd(node.angle*M_PI/180, Vector3d::UnitZ()) * Eigen::AngleAxisd(M_PI/2, Vector3d::UnitX()));
 		ps_end->transform(rot2);
+		ps_end->applyTransform();
 		if (flip_faces) {
 			BOOST_FOREACH(Polygon &p, ps_end->polygons) {
 				std::reverse(p.begin(), p.end());
