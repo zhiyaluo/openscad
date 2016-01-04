@@ -6,6 +6,7 @@
 #include "GeometryUtils.h"
 #include "renderer.h"
 #include "Polygon2d.h"
+#include "linalg.h"
 #include <vector>
 #include <string>
 
@@ -30,15 +31,6 @@ public:
 
 	void quantizeVertices();
 	size_t numPolygons() const { return polygons.size(); }
-	void append_poly();
-	void append_poly(const Polygon &poly);
-	void append_vertex(double x, double y, double z = 0.0);
-	void append_vertex(const Vector3d &v);
-	void append_vertex(const Vector3f &v);
-	void insert_vertex(double x, double y, double z = 0.0);
-	void insert_vertex(const Vector3d &v);
-	void insert_vertex(const Vector3f &v);
-	void append(const PolySet &ps);
 
 	void render_surface(Renderer::csgmode_e csgmode, const Transform3d &m, GLint *shaderinfo = NULL) const;
 	void render_edges(Renderer::csgmode_e csgmode) const;
@@ -55,4 +47,5 @@ private:
 	mutable boost::tribool convex;
 	mutable BoundingBox bbox;
 	mutable bool dirty;
+	friend class PolySetBuilder;
 };

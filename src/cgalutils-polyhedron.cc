@@ -2,6 +2,7 @@
 
 #include "cgalutils.h"
 #include "polyset.h"
+#include "polysetbuilder.h"
 #include "printutils.h"
 #include "polyset-utils.h"
 #include "grid.h"
@@ -270,19 +271,22 @@ namespace CGALUtils {
 		typedef typename Polyhedron::Vertex_const_iterator                  VCI;
 		typedef typename Polyhedron::Facet_const_iterator                   FCI;
 		typedef typename Polyhedron::Halfedge_around_facet_const_circulator HFCC;
-		
+
+		PolySetBuilder builder;
 		for (FCI fi = p.facets_begin(); fi != p.facets_end(); ++fi) {
 			HFCC hc = fi->facet_begin();
 			HFCC hc_end = hc;
-			ps.append_poly();
+			Polygon poly;
 			do {
 				Vertex const& v = *((hc++)->vertex());
 				double x = CGAL::to_double(v.point().x());
 				double y = CGAL::to_double(v.point().y());
 				double z = CGAL::to_double(v.point().z());
-				ps.append_vertex(x, y, z);
+				poly.push_back({x, y, z});
 			} while (hc != hc_end);
+			builder.append(poly);
 		}
+		builder.build(ps);
 		return err;
 	}
 

@@ -300,6 +300,7 @@ HEADERS += src/typedefs.h \
            src/clipper-utils.h \
            src/GeometryUtils.h \
            src/polyset-utils.h \
+           src/polysetbuilder.h \
            src/polyset.h \
            src/printutils.h \
            src/fileutils.h \
@@ -368,6 +369,7 @@ SOURCES += src/version_check.cc \
            src/clipper-utils.cc \
            src/polyset-utils.cc \
            src/GeometryUtils.cc \
+           src/polysetbuilder.cc \
            src/polyset.cc \
            src/polyset-gl.cc \
            src/csgops.cc \

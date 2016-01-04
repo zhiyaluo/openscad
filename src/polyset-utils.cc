@@ -1,5 +1,6 @@
 #include "polyset-utils.h"
 #include "polyset.h"
+#include "polysetbuilder.h"
 #include "Polygon2d.h"
 #include "printutils.h"
 #include "GeometryUtils.h"
@@ -57,13 +58,14 @@ namespace PolysetUtils {
 		Reindexer<Vector3f> allVertices;
 		std::vector<std::vector<IndexedFace> > polygons;
 
+		PolySetBuilder builder;
 		BOOST_FOREACH(const Polygon &pgon, inps.polygons) {
 			if (pgon.size() < 3) {
 				degeneratePolygons++;
 				continue;
 			}
 			if (pgon.size() == 3) { // Short-circuit
-				outps.append_poly(pgon);
+				builder.append(pgon);
 				continue;
 			}
 			
@@ -95,14 +97,12 @@ namespace PolysetUtils {
 				bool err = GeometryUtils::tessellatePolygonWithHoles(verts, faces, triangles, NULL);
 				if (!err) {
 					BOOST_FOREACH(const IndexedTriangle &t, triangles) {
-						outps.append_poly();
-						outps.append_vertex(verts[t[0]]);
-						outps.append_vertex(verts[t[1]]);
-						outps.append_vertex(verts[t[2]]);
+						builder.append(verts[t[0]].cast<double>(), verts[t[1]].cast<double>(), verts[t[2]].cast<double>());
 					}
 				}
 			}
 		}
+		builder.build(outps);
 		if (degeneratePolygons > 0) PRINT("WARNING: PolySet has degenerate polygons");
 	}
 

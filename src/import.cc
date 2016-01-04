@@ -28,6 +28,7 @@
 
 #include "module.h"
 #include "polyset.h"
+#include "polysetbuilder.h"
 #include "Polygon2d.h"
 #include "evalcontext.h"
 #include "builtin.h"
@@ -191,6 +192,7 @@ Geometry *ImportNode::createGeometry() const
 	switch (this->type) {
 	case TYPE_STL: {
 		PolySet *p = new PolySet(3);
+		PolySetBuilder builder;
 		g = p;
 
 		handle_dep((std::string)this->filename);
@@ -251,10 +253,9 @@ Geometry *ImportNode::createGeometry() const
 						continue;
 					}
 					if (++i == 3) {
-						p->append_poly();
-						p->append_vertex(vdata[0][0], vdata[0][1], vdata[0][2]);
-						p->append_vertex(vdata[1][0], vdata[1][1], vdata[1][2]);
-						p->append_vertex(vdata[2][0], vdata[2][1], vdata[2][2]);
+						builder.append({vdata[0][0], vdata[0][1], vdata[0][2]},
+													 {vdata[1][0], vdata[1][1], vdata[1][2]},
+													 {vdata[2][0], vdata[2][1], vdata[2][2]});
 					}
 				}
 			}
@@ -266,12 +267,12 @@ Geometry *ImportNode::createGeometry() const
 				stl_facet facet;
 				read_stl_facet( f, facet );
 				if (f.eof()) break;
-				p->append_poly();
-				p->append_vertex(facet.data.x1, facet.data.y1, facet.data.z1);
-				p->append_vertex(facet.data.x2, facet.data.y2, facet.data.z2);
-				p->append_vertex(facet.data.x3, facet.data.y3, facet.data.z3);
+				builder.append({facet.data.x1, facet.data.y1, facet.data.z1},
+											 {facet.data.x2, facet.data.y2, facet.data.z2},
+											 {facet.data.x3, facet.data.y3, facet.data.z3});
 			}
 		}
+		builder.build(*p);
 	}
 		break;
 	case TYPE_OFF: {

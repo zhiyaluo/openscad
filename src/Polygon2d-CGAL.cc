@@ -1,5 +1,6 @@
 #include "Polygon2d-CGAL.h"
 #include "polyset.h"
+#include "polysetbuilder.h"
 #include "printutils.h"
 
 #include <CGAL/Exact_predicates_inexact_constructions_kernel.h>
@@ -107,7 +108,8 @@ PolySet *Polygon2d::tessellate() const
 {
 	PRINTDB("Polygon2d::tessellate(): %d outlines", this->outlines().size());
 	PolySet *polyset = new PolySet(*this);
-
+	PolySetBuilder builder;
+	
 	Polygon2DCGAL::CDT cdt; // Uses a constrained Delaunay triangulator.
 	OPENSCAD_CGAL_ERROR_BEGIN;
 	// Adds all vertices, and add all contours as constraints.
@@ -130,11 +132,11 @@ PolySet *Polygon2d::tessellate() const
 	for (Polygon2DCGAL::CDT::Finite_faces_iterator fit=cdt.finite_faces_begin();
 			 fit!=cdt.finite_faces_end();++fit) {
 		if (fit->info().in_domain()) {
-			polyset->append_poly();
-			for (int i=0;i<3;i++) polyset->append_vertex(fit->vertex(i)->point()[0],
-																									 fit->vertex(i)->point()[1],
-																									 0);
+			builder.append({fit->vertex(0)->point()[0], fit->vertex(0)->point()[1], 0},
+										 {fit->vertex(1)->point()[0], fit->vertex(1)->point()[1], 0},
+										 {fit->vertex(2)->point()[0], fit->vertex(2)->point()[1], 0});
 		}
 	}
+	builder.build(*polyset);
 	return polyset;
 }

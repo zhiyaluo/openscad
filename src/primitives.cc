@@ -27,6 +27,7 @@
 #include "module.h"
 #include "node.h"
 #include "polyset.h"
+#include "polysetbuilder.h"
 #include "evalcontext.h"
 #include "Polygon2d.h"
 #include "builtin.h"
@@ -305,60 +306,37 @@ Geometry *PrimitiveNode::createGeometry() const
 
 	switch (this->type) {
 	case CUBE: {
+		PolySetBuilder builder;
 		PolySet *p = new PolySet(3,true);
 		g = p;
 		if (this->x > 0 && this->y > 0 && this->z > 0 &&
-			!isinf(this->x) > 0 && !isinf(this->y) > 0 && !isinf(this->z) > 0) {
+				!isinf(this->x) > 0 && !isinf(this->y) > 0 && !isinf(this->z) > 0) {
 			double x1, x2, y1, y2, z1, z2;
+			Vector3d v0,v1;
 			if (this->center) {
-				x1 = -this->x/2;
-				x2 = +this->x/2;
-				y1 = -this->y/2;
-				y2 = +this->y/2;
-				z1 = -this->z/2;
-				z2 = +this->z/2;
+				v1 = Vector3d({this->x,this->y,this->z}) / 2;
+				v0 = -v1;
 			} else {
-				x1 = y1 = z1 = 0;
-				x2 = this->x;
-				y2 = this->y;
-				z2 = this->z;
+				v0 = Vector3d::Zero();
+				v1 = {this->x,this->y,this->z};
 			}
-
-			p->append_poly(); // top
-			p->append_vertex(x1, y1, z2);
-			p->append_vertex(x2, y1, z2);
-			p->append_vertex(x2, y2, z2);
-			p->append_vertex(x1, y2, z2);
-
-			p->append_poly(); // bottom
-			p->append_vertex(x1, y2, z1);
-			p->append_vertex(x2, y2, z1);
-			p->append_vertex(x2, y1, z1);
-			p->append_vertex(x1, y1, z1);
-
-			p->append_poly(); // side1
-			p->append_vertex(x1, y1, z1);
-			p->append_vertex(x2, y1, z1);
-			p->append_vertex(x2, y1, z2);
-			p->append_vertex(x1, y1, z2);
-
-			p->append_poly(); // side2
-			p->append_vertex(x2, y1, z1);
-			p->append_vertex(x2, y2, z1);
-			p->append_vertex(x2, y2, z2);
-			p->append_vertex(x2, y1, z2);
-
-			p->append_poly(); // side3
-			p->append_vertex(x2, y2, z1);
-			p->append_vertex(x1, y2, z1);
-			p->append_vertex(x1, y2, z2);
-			p->append_vertex(x2, y2, z2);
-
-			p->append_poly(); // side4
-			p->append_vertex(x1, y2, z1);
-			p->append_vertex(x1, y1, z1);
-			p->append_vertex(x1, y1, z2);
-			p->append_vertex(x1, y2, z2);
+			x1 = v0[0];
+			y1 = v0[1];
+			z1 = v0[2];
+			x2 = v1[0];
+			y2 = v1[1];
+			z2 = v1[2];
+			
+      // top
+			builder.append({x1, y1, z2}, {x2, y1, z2}, {x2, y2, z2}, {x1, y2, z2});
+      // bottom
+			builder.append({x1, y2, z1}, {x2, y2, z1}, {x2, y1, z1}, {x1, y1, z1});
+      // sides
+			builder.append({x1, y1, z1}, {x2, y1, z1}, {x2, y1, z2}, {x1, y1, z2});
+			builder.append({x2, y1, z1}, {x2, y2, z1}, {x2, y2, z2}, {x2, y1, z2});
+			builder.append({x2, y2, z1}, {x1, y2, z1}, {x1, y2, z2}, {x2, y2, z2});
+			builder.append({x1, y2, z1}, {x1, y1, z1}, {x1, y1, z2}, {x1, y2, z2});
+			builder.build(*p);
 		}
 	}
 		break;
@@ -388,10 +366,13 @@ Geometry *PrimitiveNode::createGeometry() const
 				generate_circle(ring[i].points, r, fragments);
 			}
 
-			p->append_poly();
-			for (int i = 0; i < fragments; i++)
-				p->append_vertex(ring[0].points[i].x, ring[0].points[i].y, ring[0].z);
-
+			PolySetBuilder builder;
+			Polygon poly;
+			for (int i = 0; i < fragments; i++) {
+				poly.push_back({ring[0].points[i].x, ring[0].points[i].y, ring[0].z});
+			}
+			builder.append(poly);
+				
 			for (int i = 0; i < rings-1; i++) {
 				ring_s *r1 = &ring[i];
 				ring_s *r2 = &ring[i+1];
@@ -406,30 +387,31 @@ Geometry *PrimitiveNode::createGeometry() const
 							(double)r2i / fragments)
 					{
 					sphere_next_r1:
-						p->append_poly();
 						int r1j = (r1i+1) % fragments;
-						p->insert_vertex(r1->points[r1i].x, r1->points[r1i].y, r1->z);
-						p->insert_vertex(r1->points[r1j].x, r1->points[r1j].y, r1->z);
-						p->insert_vertex(r2->points[r2i % fragments].x, r2->points[r2i % fragments].y, r2->z);
+						builder.append({r2->points[r2i % fragments].x, r2->points[r2i % fragments].y, r2->z},
+													 {r1->points[r1j].x, r1->points[r1j].y, r1->z},
+													 {r1->points[r1i].x, r1->points[r1i].y, r1->z});
 						r1i++;
 					} else {
 					sphere_next_r2:
-						p->append_poly();
 						int r2j = (r2i+1) % fragments;
-						p->append_vertex(r2->points[r2i].x, r2->points[r2i].y, r2->z);
-						p->append_vertex(r2->points[r2j].x, r2->points[r2j].y, r2->z);
-						p->append_vertex(r1->points[r1i % fragments].x, r1->points[r1i % fragments].y, r1->z);
+						builder.append({r2->points[r2i].x, r2->points[r2i].y, r2->z},
+													 {r2->points[r2j].x, r2->points[r2j].y, r2->z},
+													 {r1->points[r1i % fragments].x, r1->points[r1i % fragments].y, r1->z});
 						r2i++;
 					}
 				}
 			}
 
-			p->append_poly();
-			for (int i = 0; i < fragments; i++)
-				p->insert_vertex(ring[rings-1].points[i].x, 
-												 ring[rings-1].points[i].y, 
-												 ring[rings-1].z);
+			poly.resize(0);
+			for (int i = fragments-1; i >= 0; i--) {
+				poly.push_back({ring[rings-1].points[i].x, 
+							ring[rings-1].points[i].y, 
+							ring[rings-1].z});
+			}
+			builder.append(poly);
 
+			builder.build(*p);
 			for (int i = 0; i < rings; i++) {
 				delete[] ring[i].points;
 			}
@@ -460,42 +442,44 @@ Geometry *PrimitiveNode::createGeometry() const
 			generate_circle(circle1, r1, fragments);
 			generate_circle(circle2, r2, fragments);
 		
+			PolySetBuilder builder;
 			for (int i=0; i<fragments; i++) {
 				int j = (i+1) % fragments;
 				if (r1 == r2) {
-					p->append_poly();
-					p->insert_vertex(circle1[i].x, circle1[i].y, z1);
-					p->insert_vertex(circle2[i].x, circle2[i].y, z2);
-					p->insert_vertex(circle2[j].x, circle2[j].y, z2);
-					p->insert_vertex(circle1[j].x, circle1[j].y, z1);
+					builder.append({circle1[j].x, circle1[j].y, z1},
+												 {circle2[j].x, circle2[j].y, z2},
+												 {circle2[i].x, circle2[i].y, z2},
+												 {circle1[i].x, circle1[i].y, z1});
 				} else {
 					if (r1 > 0) {
-						p->append_poly();
-						p->insert_vertex(circle1[i].x, circle1[i].y, z1);
-						p->insert_vertex(circle2[i].x, circle2[i].y, z2);
-						p->insert_vertex(circle1[j].x, circle1[j].y, z1);
+						builder.append({circle1[j].x, circle1[j].y, z1},
+													 {circle2[i].x, circle2[i].y, z2},
+													 {circle1[i].x, circle1[i].y, z1});
 					}
 					if (r2 > 0) {
-						p->append_poly();
-						p->insert_vertex(circle2[i].x, circle2[i].y, z2);
-						p->insert_vertex(circle2[j].x, circle2[j].y, z2);
-						p->insert_vertex(circle1[j].x, circle1[j].y, z1);
+						builder.append({circle1[j].x, circle1[j].y, z1},
+													 {circle2[j].x, circle2[j].y, z2},
+													 {circle2[i].x, circle2[i].y, z2});
 					}
 				}
 			}
 
 			if (this->r1 > 0) {
-				p->append_poly();
-				for (int i=0; i<fragments; i++)
-					p->insert_vertex(circle1[i].x, circle1[i].y, z1);
+				Polygon poly;
+				for (int i=fragments-1; i>=0; i--) {
+					poly.push_back({circle1[i].x, circle1[i].y, z1});
+				}
+				builder.append(poly);
 			}
 
 			if (this->r2 > 0) {
-				p->append_poly();
-				for (int i=0; i<fragments; i++)
-					p->append_vertex(circle2[i].x, circle2[i].y, z2);
+				Polygon poly;
+				for (int i=0; i<fragments; i++) {
+					poly.push_back({circle2[i].x, circle2[i].y, z2});
+				}
+				builder.append(poly);
 			}
-
+			builder.build(*p);
 			delete[] circle1;
 			delete[] circle2;
 		}
@@ -505,23 +489,26 @@ Geometry *PrimitiveNode::createGeometry() const
 		PolySet *p = new PolySet(3);
 		g = p;
 		p->setConvexity(this->convexity);
-		for (size_t i=0; i<this->faces->toVector().size(); i++)
-		{
-			p->append_poly();
-			const Value::VectorType &vec = this->faces->toVector()[i]->toVector();
+		PolySetBuilder builder;
+		for (auto face : this->faces->toVector()) {
+			Polygon poly;
+			const Value::VectorType &vec = face->toVector();
 			for (size_t j=0; j<vec.size(); j++) {
-				size_t pt = vec[j]->toDouble();
+				size_t idx = vec.size()-j-1;
+				size_t pt = vec[idx]->toDouble();
 				if (pt < this->points->toVector().size()) {
 					double px, py, pz;
 					if (!this->points->toVector()[pt]->getVec3(px, py, pz) ||
 							isinf(px) || isinf(py) || isinf(pz)) {
-						PRINTB("ERROR: Unable to convert point at index %d to a vec3 of numbers", j);
+						PRINTB("ERROR: Unable to convert point at index %d to a vec3 of numbers", idx);
 						return p;
 					}
-					p->insert_vertex(px, py, pz);
+					poly.push_back({px, py, pz});
 				}
 			}
+			builder.append(poly);
 		}
+		builder.build(*p);
 	}
 		break;
 	case SQUARE: {

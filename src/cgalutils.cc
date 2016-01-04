@@ -5,6 +5,7 @@
 
 #include "cgalutils.h"
 #include "polyset.h"
+#include "polysetbuilder.h"
 #include "printutils.h"
 #include "Polygon2d.h"
 #include "polyset-utils.h"
@@ -274,6 +275,7 @@ namespace CGALUtils {
 		// 1. Build Indexed PolyMesh
 		Reindexer<Vector3f> allVertices;
 		std::vector<std::vector<IndexedFace> > polygons;
+		PolySetBuilder builder;
 
 		CGAL_Nef_polyhedron3::Halffacet_const_iterator hfaceti;
 		CGAL_forall_halffacets(hfaceti, N) {
@@ -375,10 +377,7 @@ namespace CGALUtils {
 		}
 
 		BOOST_FOREACH(const IndexedTriangle &t, allTriangles) {
-			ps.append_poly();
-			ps.append_vertex(verts[t[0]]);
-			ps.append_vertex(verts[t[1]]);
-			ps.append_vertex(verts[t[2]]);
+			builder.append(verts[t[0]].cast<double>(), verts[t[1]].cast<double>(), verts[t[2]].cast<double>());
 		}
 
 #if 0 // For debugging
@@ -388,6 +387,8 @@ namespace CGALUtils {
 		}		
 #endif // debug
 
+		builder.build(ps);
+		
 		return err;
 	}
 #endif // createPolySetFromNefPolyhedron3

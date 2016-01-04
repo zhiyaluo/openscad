@@ -20,6 +20,7 @@
 #include "clipper-utils.h"
 #include "polyset-utils.h"
 #include "polyset.h"
+#include "polysetbuilder.h"
 #include "calc.h"
 #include "printutils.h"
 #include "svg.h"
@@ -625,7 +626,7 @@ static void translate_PolySet(PolySet &ps, const Vector3d &translation)
 	}
 }
 
-static void add_slice(PolySet *ps, const Polygon2d &poly, 
+static void add_slice(PolySetBuilder &builder, const Polygon2d &poly, 
 											double rot1, double rot2, 
 											double h1, double h2, 
 											const Vector2d &scale1,
@@ -641,29 +642,26 @@ static void add_slice(PolySet *ps, const Polygon2d &poly,
 		for (size_t i=1;i<=o.vertices.size();i++) {
 			Vector2d curr1 = trans1 * o.vertices[i % o.vertices.size()];
 			Vector2d curr2 = trans2 * o.vertices[i % o.vertices.size()];
-			ps->append_poly();
 			
 			// Make sure to split negative outlines correctly
 			if (splitfirst xor !o.positive) {
-				ps->insert_vertex(prev1[0], prev1[1], h1);
-				ps->insert_vertex(curr2[0], curr2[1], h2);
-				ps->insert_vertex(curr1[0], curr1[1], h1);
+				builder.append({curr1[0], curr1[1], h1},
+											 {curr2[0], curr2[1], h2},
+											 {prev1[0], prev1[1], h1});
 				if (scale2[0] > 0 || scale2[1] > 0) {
-					ps->append_poly();
-					ps->insert_vertex(curr2[0], curr2[1], h2);
-					ps->insert_vertex(prev1[0], prev1[1], h1);
-					ps->insert_vertex(prev2[0], prev2[1], h2);
+					builder.append({prev2[0], prev2[1], h2},
+												 {prev1[0], prev1[1], h1},
+												 {curr2[0], curr2[1], h2});
 				}
 			}
 			else {
-				ps->insert_vertex(prev1[0], prev1[1], h1);
-				ps->insert_vertex(prev2[0], prev2[1], h2);
-				ps->insert_vertex(curr1[0], curr1[1], h1);
+				builder.append({curr1[0], curr1[1], h1},
+											 {prev2[0], prev2[1], h2},
+											 {prev1[0], prev1[1], h1});
 				if (scale2[0] > 0 || scale2[1] > 0) {
-					ps->append_poly();
-					ps->insert_vertex(prev2[0], prev2[1], h2);
-					ps->insert_vertex(curr2[0], curr2[1], h2);
-					ps->insert_vertex(curr1[0], curr1[1], h1);
+					builder.append({curr1[0], curr1[1], h1},
+												 {curr2[0], curr2[1], h2},
+												 {prev2[0], prev2[1], h2});
 				}
 			}
 			prev1 = curr1;
@@ -680,6 +678,7 @@ static Geometry *extrudePolygon(const LinearExtrudeNode &node, const Polygon2d &
 {
 	bool cvx = poly.is_convex();
 	PolySet *ps = new PolySet(3, !cvx ? boost::tribool(false) : node.twist == 0 ? boost::tribool(true) : unknown);
+	PolySetBuilder builder;
 	ps->setConvexity(node.convexity);
 	if (node.height <= 0) return ps;
 
@@ -701,7 +700,7 @@ static Geometry *extrudePolygon(const LinearExtrudeNode &node, const Polygon2d &
 	}
 	translate_PolySet(*ps_bottom, Vector3d(0,0,h1));
 
-	ps->append(*ps_bottom);
+	builder.append(ps_bottom->polygons);
 	delete ps_bottom;
 	if (node.scale_x > 0 || node.scale_y > 0) {
 		Polygon2d top_poly(poly);
@@ -710,7 +709,7 @@ static Geometry *extrudePolygon(const LinearExtrudeNode &node, const Polygon2d &
 		top_poly.transform(trans); // top
 		PolySet *ps_top = top_poly.tessellate();
 		translate_PolySet(*ps_top, Vector3d(0,0,h2));
-		ps->append(*ps_top);
+		builder.append(ps_top->polygons);
 		delete ps_top;
 	}
     size_t slices = node.slices;
@@ -724,8 +723,9 @@ static Geometry *extrudePolygon(const LinearExtrudeNode &node, const Polygon2d &
 										1 - (1-node.scale_y)*j / slices);
 		Vector2d scale2(1 - (1-node.scale_x)*(j+1) / slices,
 										1 - (1-node.scale_y)*(j+1) / slices);
-		add_slice(ps, poly, rot1, rot2, height1, height2, scale1, scale2);
+		add_slice(builder, poly, rot1, rot2, height1, height2, scale1, scale2);
 	}
+	builder.build(*ps);
 
 	return ps;
 }
@@ -811,6 +811,7 @@ static Geometry *rotatePolygon(const RotateExtrudeNode &node, const Polygon2d &p
 	if (node.angle == 0) return NULL; 
 
 	PolySet *ps = new PolySet(3);
+	PolySetBuilder builder;
 	ps->setConvexity(node.convexity);
 	
 	double min_x = 0;
@@ -842,7 +843,7 @@ static Geometry *rotatePolygon(const RotateExtrudeNode &node, const Polygon2d &p
 				std::reverse(p.begin(), p.end());
 			}
 		}
-		ps->append(*ps_start);
+		builder.append(ps_start->polygons);
 		delete ps_start;
 
 		PolySet *ps_end = poly.tessellate();
@@ -853,7 +854,7 @@ static Geometry *rotatePolygon(const RotateExtrudeNode &node, const Polygon2d &p
 				std::reverse(p.begin(), p.end());
 			}
 		}
-		ps->append(*ps_end);
+		builder.append(ps_end->polygons);
 		delete ps_end;
 	}
 
@@ -872,18 +873,16 @@ static Geometry *rotatePolygon(const RotateExtrudeNode &node, const Polygon2d &p
 			fill_ring(rings[(j+1)%2], o, a, flip_faces);
 
 			for (size_t i=0;i<o.vertices.size();i++) {
-				ps->append_poly();
-				ps->insert_vertex(rings[j%2][i]);
-				ps->insert_vertex(rings[(j+1)%2][(i+1)%o.vertices.size()]);
-				ps->insert_vertex(rings[j%2][(i+1)%o.vertices.size()]);
-				ps->append_poly();
-				ps->insert_vertex(rings[j%2][i]);
-				ps->insert_vertex(rings[(j+1)%2][i]);
-				ps->insert_vertex(rings[(j+1)%2][(i+1)%o.vertices.size()]);
+				builder.append(rings[j%2][(i+1)%o.vertices.size()],
+											 rings[(j+1)%2][(i+1)%o.vertices.size()],
+											 rings[j%2][i]);
+				builder.append(rings[(j+1)%2][(i+1)%o.vertices.size()],
+											 rings[(j+1)%2][i],
+											 rings[j%2][i]);
 			}
 		}
 	}
-	
+	builder.build(*ps);
 	return ps;
 }
 

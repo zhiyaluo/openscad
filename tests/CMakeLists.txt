@@ -732,6 +732,7 @@ set(NOCGAL_SOURCES
   ../src/export_svg.cc
   ../src/LibraryInfo.cc
   ../src/polyset.cc
+  ../src/polysetbuilder.cc
   ../src/polyset-gl.cc
   ../src/polyset-utils.cc
   ../src/GeometryUtils.cc)
