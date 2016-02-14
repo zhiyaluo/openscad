@@ -255,6 +255,20 @@ namespace CGALUtils {
 			PRINTB("CGAL error in CGALUtils::createPolyhedronFromPolySet: %s", e.what());
 			err = true;
 		}
+
+		for (auto facet = p.facets_begin(); facet != p.facets_end(); facet++) {
+			auto h = facet->halfedge();
+			if (CGAL::cross_product(
+						h->next()->vertex()->point() - h->vertex()->point(),
+						h->next()->next()->vertex()->point() - h->next()->vertex()->point()).squared_length() == 0.0) {
+				p.flip_edge(h);
+				if (h->next()->vertex() == h->vertex()) {
+					p.join_vertex(h);
+				}
+			}
+		}
+
+		
 		CGAL::set_error_behaviour(old_behaviour);
 		return err;
 	}
