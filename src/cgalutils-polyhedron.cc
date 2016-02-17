@@ -14,6 +14,55 @@
 #undef GEN_SURFACE_DEBUG
 namespace /* anonymous */ {
 
+	template <typename Polyhedron> int countThinTriangles(const Polyhedron &p) {
+		int numthin = 0;
+		for (auto facet = p.facets_begin(); facet != p.facets_end(); facet++) {
+			auto h = facet->halfedge();
+			double epsilon = 0.1;
+			if (CGAL::cross_product(
+						h->next()->vertex()->point() - h->vertex()->point(),
+						h->next()->next()->vertex()->point() - h->next()->vertex()->point()).squared_length() <= epsilon) {
+				numthin++;
+			}
+		}
+		return numthin;
+	}
+
+	template <typename Vertex> void printVertex(const Vertex &v) {
+		PRINTB("%.1f %.1f %.1f", CGAL::to_double(v.point()[0]) % CGAL::to_double(v.point()[1]) % CGAL::to_double(v.point()[2]));
+	}
+
+	template <typename Halfedge> void printHalfedge(const Halfedge &h) {
+		printVertex(*h.opposite()->vertex());
+		printVertex(*h.vertex());
+	}
+
+	template <typename Facet> void printFacet(const Facet &f) {
+		printVertex(*f.halfedge()->vertex());
+		printVertex(*f.halfedge()->next()->vertex());
+		printVertex(*f.halfedge()->next()->next()->vertex());
+	}
+
+	/*
+		Precondition: h is the null edge in a pair of degenerate triangles (h->vertex() == h->opposite()->vertex)
+		Removes the two triangles associated with h and h->opposite().
+	*/
+	template <typename Polyhedron, typename Halfedge_handle> void remove_degenerate_triangles(Polyhedron &p, Halfedge_handle h) {
+		CGAL::HalfedgeDS_decorator<typename Polyhedron::HDS> D(p.hds());
+		Halfedge_handle hprev = h->opposite()->prev();
+		Halfedge_handle gprev = h->prev();
+		D.remove_halfedge(hprev);
+		D.remove_halfedge(gprev);
+		D.set_vertex_halfedge(hprev);
+		p.hds().faces_erase(h->opposite()->face());
+		p.hds().faces_erase(h->face());
+		p.hds().edges_erase(h);
+	}
+
+	template <typename Halfedge> double sqrLength(const Halfedge &h) {
+		return CGAL::to_double(CGAL::squared_distance(h.opposite()->vertex()->point(), h.vertex()->point()));
+	}
+
 	template <typename Polyhedron>
 	class CGAL_Build_PolySet : public CGAL::Modifier_base<typename Polyhedron::HalfedgeDS>
 	{
@@ -256,19 +305,49 @@ namespace CGALUtils {
 			err = true;
 		}
 
-		for (auto facet = p.facets_begin(); facet != p.facets_end(); facet++) {
-			auto h = facet->halfedge();
-			if (CGAL::cross_product(
-						h->next()->vertex()->point() - h->vertex()->point(),
-						h->next()->next()->vertex()->point() - h->next()->vertex()->point()).squared_length() == 0.0) {
-				p.flip_edge(h);
-				if (h->next()->vertex() == h->vertex()) {
-					p.join_vertex(h);
+		PRINTB("Is closed: %d", p.is_closed());
+		if (!p.is_closed()) {
+			PRINTB("Border edges: %d", p.size_of_border_edges());
+			PRINTB("Border halfedges: %d", p.size_of_border_halfedges());
+		}
+		PRINTB("Is valid: %d", p.is_valid(true, 3));
+
+		PRINTB("Num thin triangles: %d", countThinTriangles(p));
+		int numPasses = 0;
+		while (countThinTriangles(p) > 0 && numPasses < 100) {
+			numPasses++;
+			for (auto facet = p.facets_begin(); facet != p.facets_end(); facet++) {
+				auto h = facet->halfedge();
+				if (facet->facet_degree() != 3) PRINTB("Degree: %d", facet->facet_degree());
+				double epsilon = 0.01;
+				if (CGAL::cross_product(
+							h->next()->vertex()->point() - h->vertex()->point(),
+							h->next()->next()->vertex()->point() - h->next()->vertex()->point()).squared_length() <= epsilon) {
+//			if (CGAL::to_double(CGAL::squared_area(h->vertex()->point(),
+//																						 h->next()->vertex()->point(),
+//																						 h->next()->next()->vertex()->point()) == 0.0)) {
+					printFacet(*facet);
+					auto h2 = h->next();
+					auto h3 = h2->next();
+					double hl = sqrLength(*h);
+					double h2l = sqrLength(*h2);
+					double h3l = sqrLength(*h3);
+					if (h2l > hl) { h = h2; hl = h2l; }
+					if (h3l > hl) h = h3;
+					PRINT("Before flip:");
+					printHalfedge(*h);
+					p.flip_edge(h);
+					PRINT("After flip:");
+					printHalfedge(*h);
+					if (h->opposite()->vertex() == h->vertex()) {
+						facet--;
+						remove_degenerate_triangles(p, h);
+					}
 				}
 			}
 		}
-
-		
+	
+		PRINTB("After split: Num thin triangles: %d", countThinTriangles(p));
 		CGAL::set_error_behaviour(old_behaviour);
 		return err;
 	}
