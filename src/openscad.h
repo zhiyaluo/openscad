@@ -26,7 +26,9 @@
 
 #pragma once
 
-extern class FileModule *parse(const char *text, const char *path, int debug);
+#include <boost/filesystem.hpp>
+
+extern class FileModule *parse(const char *text, const boost::filesystem::path &filename, int debug);
 
 #include <string>
 extern std::string commandline_commands;
@@ -35,11 +37,12 @@ extern std::string commandline_commands;
 // doing this, use currentdir to get the original CWD.
 extern std::string currentdir;
 
-// Version number without the git suffix.
-extern std::string versionnumber;
-
-// Just the number (might have the git commit as suffix), e.g. 2014.12.23.
+// Version number without any patch level indicator
+extern std::string openscad_shortversionnumber;
+// The full version number, e.g. 2014.03, 2015.03-1, 2014.12.23
 extern std::string openscad_versionnumber;
-
-// The string "OpenSCAD " and the version number.
-extern std::string openscad_version;
+// Version used for display, typically without patchlevel indicator,
+// but may include git commit id for snapshot builds
+extern std::string openscad_displayversionnumber;
+// Version used for detailed display
+extern std::string openscad_detailedversionnumber;

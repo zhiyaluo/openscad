@@ -75,8 +75,12 @@ macx:isEmpty(OPENSCAD_LIBDIR) {
 deploy {
   message("Building deployment version")
   DEFINES += OPENSCAD_DEPLOY
-  macx: CONFIG += sparkle
+  macx: {
+    CONFIG += sparkle
+    QMAKE_RPATHDIR = @executable_path/../Frameworks
+  }
 }
+snapshot: DEFINES += OPENSCAD_SNAPSHOT
 
 macx {
   TARGET = OpenSCAD
@@ -88,31 +92,20 @@ FULLNAME = openscad$${SUFFIX}
 !isEmpty(SUFFIX): DEFINES += INSTALL_SUFFIX="\"\\\"$${SUFFIX}\\\"\""
 
 macx {
-  ICON = icons/OpenSCAD.icns
+  snapshot {
+    ICON = icons/icon-nightly.icns
+  }
+  else {
+    ICON = icons/OpenSCAD.icns
+  }
   QMAKE_INFO_PLIST = Info.plist
   APP_RESOURCES.path = Contents/Resources
   APP_RESOURCES.files = OpenSCAD.sdef dsa_pub.pem icons/SCAD.icns
   QMAKE_BUNDLE_DATA += APP_RESOURCES
   LIBS += -framework Cocoa -framework ApplicationServices
-
-  # Mac needs special care to link against the correct C++ library
-  # We attempt to auto-detect it by inspecting Boost
-  dirs = $${BOOSTDIR} $${QMAKE_LIBDIR}
-  for(dir, dirs) {
-    system(grep -q __112basic_string $${dir}/libboost_thread* >& /dev/null) {
-      message("Detected libc++-linked boost in $${dir}")
-      CONFIG += libc++
-    }
-  }
-
-  libc++ {
-    QMAKE_CXXFLAGS += -stdlib=libc++
-    QMAKE_LFLAGS += -stdlib=libc++
-    QMAKE_OBJECTIVE_CFLAGS += -stdlib=libc++
-    # libc++ on requires Mac OS X 10.7+
-    QMAKE_MACOSX_DEPLOYMENT_TARGET = 10.7
-  }
+  QMAKE_MACOSX_DEPLOYMENT_TARGET = 10.8
 }
+
 
 win* {
   RC_FILE = openscad_win32.rc
@@ -127,21 +120,12 @@ mingw* {
 }
 
 CONFIG += qt
-QT += opengl concurrent
-
-# see http://fedoraproject.org/wiki/UnderstandingDSOLinkChange
-# and https://github.com/openscad/openscad/pull/119
-# ( QT += opengl does not automatically link glu on some DSO systems. )
-unix:!macx {
-  QMAKE_LIBS_OPENGL *= -lGLU
-  QMAKE_LIBS_OPENGL *= -lX11
-}
+QT += widgets concurrent
 
 netbsd* {
    QMAKE_LFLAGS += -L/usr/X11R7/lib
    QMAKE_LFLAGS += -Wl,-R/usr/X11R7/lib
    QMAKE_LFLAGS += -Wl,-R/usr/pkg/lib
-   !clang: { QMAKE_CXXFLAGS += -std=c++0x }
    # FIXME: Can the lines below be removed in favour of the OPENSCAD_LIBDIR handling above?
    !isEmpty(OPENSCAD_LIBDIR) {
      QMAKE_CFLAGS = -I$$OPENSCAD_LIBDIR/include $$QMAKE_CFLAGS
@@ -175,7 +159,6 @@ netbsd* {
   QMAKE_CXXFLAGS_WARN_ON += -Wno-unused-parameter
   QMAKE_CXXFLAGS_WARN_ON += -Wno-unused-variable
   QMAKE_CXXFLAGS_WARN_ON += -Wno-unused-function
-  QMAKE_CXXFLAGS_WARN_ON += -Wno-c++11-extensions
   # gettext
   QMAKE_CXXFLAGS_WARN_ON += -Wno-format-security
   # might want to actually turn this on once in a while
@@ -189,8 +172,10 @@ CONFIG(skip-version-check) {
 
 # Application configuration
 macx:CONFIG += mdi
+CONFIG += c++11
 CONFIG += cgal
 CONFIG += opencsg
+CONFIG += glew
 CONFIG += boost
 CONFIG += eigen
 CONFIG += glib-2.0
@@ -201,11 +186,17 @@ CONFIG += libxml2
 CONFIG += gettext
 
 #Uncomment the following line to enable the QScintilla editor
-CONFIG += scintilla
+!nogui {
+  CONFIG += scintilla
+}
 
 # Make experimental features available
 experimental {
   DEFINES += ENABLE_EXPERIMENTAL
+}
+
+nogui {
+  DEFINES += OPENSCAD_NOGUI
 }
 
 mdi {
@@ -215,16 +206,8 @@ mdi {
 include(common.pri)
 
 # mingw has to come after other items so OBJECT_DIRS will work properly
-CONFIG(mingw-cross-env) {
+CONFIG(mingw-cross-env)|CONFIG(mingw-cross-env-shared) {
   include(mingw-cross-env.pri)
-}
-
-win* {
-  FLEXSOURCES = src/lexer.l
-  BISONSOURCES = src/parser.y
-} else {
-  LEXSOURCES += src/lexer.l
-  YACCSOURCES += src/parser.y
 }
 
 RESOURCES = openscad.qrc
@@ -243,8 +226,32 @@ FORMS   += src/MainWindow.ui \
            src/launchingscreen.ui \
            src/LibraryInfoDialog.ui
 
-HEADERS += src/typedefs.h \
-           src/version_check.h \
+# AST nodes
+win* {
+  FLEXSOURCES = src/lexer.l
+  BISONSOURCES = src/parser.y
+} else {
+  LEXSOURCES += src/lexer.l
+  YACCSOURCES += src/parser.y
+}
+
+HEADERS += src/AST.h \
+           src/ModuleInstantiation.h \
+           src/Package.h \
+           src/Assignment.h \
+           src/expression.h \
+           src/function.h \
+           src/module.h \           
+           src/UserModule.h
+
+SOURCES += src/AST.cc \
+           src/ModuleInstantiation.cc \
+           src/expr.cc \
+           src/function.cc \
+           src/module.cc \
+           src/UserModule.cc
+
+HEADERS += src/version_check.h \
            src/ProgressWidget.h \
            src/parsersettings.h \
            src/renderer.h \
@@ -257,29 +264,32 @@ HEADERS += src/typedefs.h \
            src/QGLView.h \
            src/GLView.h \
            src/MainWindow.h \
+           src/OpenSCADApp.h \
+           src/WindowManager.h \
            src/Preferences.h \
            src/OpenCSGWarningDialog.h \
            src/AboutDialog.h \
            src/FontListDialog.h \
            src/FontListTableView.h \
+           src/GroupModule.h \
+           src/FileModule.h \
            src/builtin.h \
            src/calc.h \
            src/context.h \
            src/modcontext.h \
            src/evalcontext.h \
-           src/csgterm.h \
-           src/csgtermnormalizer.h \
+           src/csgops.h \
+           src/CSGTreeNormalizer.h \
+           src/CSGTreeEvaluator.h \
            src/dxfdata.h \
            src/dxfdim.h \
            src/export.h \
-           src/expression.h \
            src/stackcheck.h \
-           src/function.h \
            src/exceptions.h \
            src/grid.h \
+           src/hash.h \
            src/highlighter.h \
            src/localscope.h \
-           src/module.h \
            src/feature.h \
            src/node.h \
            src/csgnode.h \
@@ -306,20 +316,17 @@ HEADERS += src/typedefs.h \
            src/value.h \
            src/progress.h \
            src/editor.h \
-           src/visitor.h \
+           src/NodeVisitor.h \
            src/state.h \
-           src/traverser.h \
            src/nodecache.h \
            src/nodedumper.h \
            src/ModuleCache.h \
            src/GeometryCache.h \
            src/GeometryEvaluator.h \
-           src/CSGTermEvaluator.h \
            src/Tree.h \
-src/DrawingCallback.h \
-src/FreetypeRenderer.h \
-src/FontCache.h \
-           src/mathc99.h \
+           src/DrawingCallback.h \
+           src/FreetypeRenderer.h \
+           src/FontCache.h \
            src/memory.h \
            src/linalg.h \
            src/Camera.h \
@@ -361,29 +368,28 @@ SOURCES += \
            \
            src/version_check.cc \
            src/ProgressWidget.cc \
-           src/mathc99.cc \
            src/linalg.cc \
            src/Camera.cc \
            src/handle_dep.cc \
            src/value.cc \
-           src/expr.cc \
            src/stackcheck.cc \
            src/func.cc \
            src/localscope.cc \
-           src/module.cc \
            src/feature.cc \
            src/node.cc \
            src/context.cc \
            src/modcontext.cc \
            src/evalcontext.cc \
-           src/csgterm.cc \
-           src/csgtermnormalizer.cc \
+           src/csgnode.cc \
+           src/CSGTreeNormalizer.cc \
+           src/CSGTreeEvaluator.cc \
            src/Geometry.cc \
            src/Polygon2d.cc \
            src/clipper-utils.cc \
            src/polyset-utils.cc \
            src/GeometryUtils.cc \
            src/polyset.cc \
+           src/polyset-gl.cc \
            src/csgops.cc \
            src/transform.cc \
            src/color.cc \
@@ -409,7 +415,7 @@ SOURCES += \
            src/LibraryInfo.cc \
            \
            src/nodedumper.cc \
-           src/traverser.cc \
+           src/NodeVisitor.cc \
            src/GeometryEvaluator.cc \
            src/ModuleCache.cc \
            src/GeometryCache.cc \
@@ -429,15 +435,23 @@ SOURCES += \
            src/AutoUpdater.cc \
            \
            src/grid.cc \
+           src/hash.cc \
+           src/GroupModule.cc \
+           src/FileModule.cc \
            src/builtin.cc \
            src/calc.cc \
            src/export.cc \
+           src/export_stl.cc \
+           src/export_amf.cc \
+           src/export_off.cc \
+           src/export_dxf.cc \
+           src/export_svg.cc \
+           src/export_nef.cc \
            src/export_png.cc \
            src/import.cc \
            src/renderer.cc \
            src/colormap.cc \
            src/ThrownTogetherRenderer.cc \
-           src/CSGTermEvaluator.cc \
            src/svg.cc \
            src/OffscreenView.cc \
            src/fbo.cc \
@@ -447,6 +461,8 @@ SOURCES += \
            \
            src/openscad.cc \
            src/mainwin.cc \
+           src/OpenSCADApp.cc \
+           src/WindowManager.cc \
            src/UIUtils.cc \
            src/Dock.cc \
            src/FontListDialog.cc \
@@ -509,6 +525,8 @@ HEADERS += src/cgal.h \
            src/Polygon2d-CGAL.h
 
 SOURCES += src/cgalutils.cc \
+           src/cgalutils-applyops.cc \
+           src/cgalutils-project.cc \
            src/cgalutils-tess.cc \
            src/cgalutils-polyhedron.cc \
            src/CGALCache.cc \
@@ -590,7 +608,7 @@ appdata.extra = cp -f openscad.appdata.xml \"\$(INSTALL_ROOT)$${appdata.path}/$$
 INSTALLS += appdata
 
 icons.path = $$PREFIX/share/pixmaps
-icons.extra = cp -f icons/openscad.png \"\$(INSTALL_ROOT)$${icons.path}/$${FULLNAME}.png\"
+icons.extra = test -f icons/$${FULLNAME}.png && cp -f icons/$${FULLNAME}.png \"\$(INSTALL_ROOT)$${icons.path}/\" || cp -f icons/openscad.png \"\$(INSTALL_ROOT)$${icons.path}/$${FULLNAME}.png\"
 INSTALLS += icons
 
 man.path = $$PREFIX/share/man/man1

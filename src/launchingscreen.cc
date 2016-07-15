@@ -30,7 +30,7 @@ LaunchingScreen::LaunchingScreen(QWidget *parent) : QDialog(parent)
 
 	this->setStyleSheet("QDialog {background-image:url(':/icons/background.png')} QPushButton {color:white;}");
 
-	this->versionNumberLabel->setText(openscad_version.c_str());
+	this->versionNumberLabel->setText("OpenSCAD " + QString::fromStdString(openscad_displayversionnumber));
 
 	QStringList recentFiles = UIUtils::recentFiles();
 	for (int a = 0;a < recentFiles.size();a++) {
@@ -41,12 +41,12 @@ LaunchingScreen::LaunchingScreen(QWidget *parent) : QDialog(parent)
 		this->recentList->addItem(item);
 	}
 
-	foreach(const QString &category, UIUtils::exampleCategories())
+	for(const auto &category : UIUtils::exampleCategories())
 	{
 		QFileInfoList examples = UIUtils::exampleFiles(category);
 		QTreeWidgetItem *categoryItem = new QTreeWidgetItem(QStringList(gettext(category.toStdString().c_str())));
 
-		foreach(const QFileInfo &example, examples)
+		for(const auto &example : examples)
 		{
 	    QTreeWidgetItem *exampleItem = new QTreeWidgetItem(QStringList(example.fileName()));
 	    exampleItem->setData(0, Qt::UserRole, example.canonicalFilePath());

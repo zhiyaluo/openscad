@@ -6,12 +6,12 @@
 #include <boost/circular_buffer.hpp>
 #include <boost/filesystem.hpp>
 namespace fs = boost::filesystem;
-#include "boosty.h"
 
 std::list<std::string> print_messages_stack;
 OutputHandlerFunc *outputhandler = NULL;
 void *outputhandler_data = NULL;
 std::string OpenSCAD::debug("");
+bool OpenSCAD::quiet = false;
 
 boost::circular_buffer<std::string> lastmessages(5);
 
@@ -63,10 +63,12 @@ void PRINT_NOCACHE(const std::string &msg)
 		else lastmessages.push_back(msg);
 	}
 
-	if (!outputhandler) {
-		fprintf(stderr, "%s\n", msg.c_str());
-	} else {
-		outputhandler(msg, outputhandler_data);
+	if (!OpenSCAD::quiet || boost::starts_with(msg, "ERROR")) {
+		if (!outputhandler) {
+			fprintf(stderr, "%s\n", msg.c_str());
+		} else {
+			outputhandler(msg, outputhandler_data);
+		}
 	}
 }
 
@@ -74,7 +76,7 @@ void PRINTDEBUG(const std::string &filename, const std::string &msg)
 {
 	// see printutils.h for usage instructions
 	if (OpenSCAD::debug=="") return;
-	std::string shortfname = boosty::stringy(fs::path(filename).stem());
+	std::string shortfname = fs::path(filename).stem().generic_string();
 	std::string lowshortfname(shortfname);
 	boost::algorithm::to_lower(lowshortfname);
 	std::string lowdebug(OpenSCAD::debug);

@@ -1,7 +1,6 @@
 #pragma once
 
 #include "node.h"
-#include "visitor.h"
 #include "value.h"
 
 enum import_type_e {
@@ -15,10 +14,8 @@ enum import_type_e {
 class ImportNode : public LeafNode
 {
 public:
+	VISITABLE();
 	ImportNode(const ModuleInstantiation *mi, import_type_e type) : LeafNode(mi), type(type) { }
-  virtual Response accept(class State &state, Visitor &visitor) const {
-		return visitor.visit(state, *this);
-	}
 	virtual std::string toString() const;
 	virtual std::string name() const;
 
@@ -29,5 +26,5 @@ public:
 	double fn, fs, fa;
         double width, height;
 	double origin_x, origin_y, scale;
-	virtual class Geometry *createGeometry() const;
+	virtual const class Geometry *createGeometry() const;
 };

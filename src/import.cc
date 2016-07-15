@@ -27,6 +27,7 @@
 #include "importnode.h"
 
 #include "module.h"
+#include "ModuleInstantiation.h"
 #include "polyset.h"
 #include "Polygon2d.h"
 #include "evalcontext.h"
@@ -53,10 +54,9 @@
 namespace fs = boost::filesystem;
 #include <boost/assign/std/vector.hpp>
 using namespace boost::assign; // bring 'operator+=()' into scope
-#include "boosty.h"
 
 #include <boost/detail/endian.hpp>
-#include <boost/cstdint.hpp>
+#include <cstdint>
 
 class ImportModule : public AbstractModule
 {
@@ -103,7 +103,7 @@ AbstractNode *ImportModule::instantiate(const Context *ctx, const ModuleInstanti
 	std::string filename = lookup_file(v->isUndefined() ? "" : v->toString(), inst->path(), ctx->documentPath());
 	import_type_e actualtype = this->type;
 	if (actualtype == TYPE_UNKNOWN) {
-		std::string extraw = boosty::extension_str(fs::path(filename));
+		std::string extraw = fs::path(filename).extension().generic_string();
 		std::string ext = boost::algorithm::to_lower_copy(extraw);
 		if (ext == ".stl") actualtype = TYPE_STL;
 		else if (ext == ".off") actualtype = TYPE_OFF;
@@ -192,7 +192,7 @@ void read_stl_facet( std::ifstream &f, stl_facet &facet )
 /*!
 	Will return an empty geometry if the import failed, but not NULL
 */
-Geometry *ImportNode::createGeometry() const
+const Geometry *ImportNode::createGeometry() const
 {
 	Geometry *g = NULL;
 
@@ -394,10 +394,7 @@ std::string ImportNode::toString() const
 		"scale = " << this->scale << ", "
 		"convexity = " << this->convexity << ", "
 		"$fn = " << this->fn << ", $fa = " << this->fa << ", $fs = " << this->fs
-#ifndef OPENSCAD_TESTING
-  // timestamp is needed for caching, but disturbs the test framework
 				 << ", " "timestamp = " << (fs::exists(path) ? fs::last_write_time(path) : 0)
-#endif
 				 << ")";
 
 
