@@ -38,6 +38,7 @@
 #include "handle_dep.h" // handle_dep()
 #include "libsvg/libsvg.h"
 #include "clipper-utils.h"
+#include "feature.h"
 
 #ifdef ENABLE_CGAL
 #include "cgalutils.h"
@@ -107,8 +108,8 @@ AbstractNode *ImportModule::instantiate(const Context *ctx, const ModuleInstanti
 		std::string ext = boost::algorithm::to_lower_copy(extraw);
 		if (ext == ".stl") actualtype = TYPE_STL;
 		else if (ext == ".off") actualtype = TYPE_OFF;
-		else if (ext == ".svg") actualtype = TYPE_SVG;
 		else if (ext == ".dxf") actualtype = TYPE_DXF;
+		else if (Feature::ExperimentalSvgImport.is_enabled() && ext == ".svg") actualtype = TYPE_SVG;
 	}
 
 	ImportNode *node = new ImportNode(inst, actualtype);
