@@ -1,5 +1,5 @@
 #include "import.h"
-#include "polygon2d.h"
+#include "Polygon2d.h"
 #include "printutils.h"
 #include "libsvg/libsvg.h"
 #include "clipper-utils.h"
