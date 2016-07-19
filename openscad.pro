@@ -299,6 +299,7 @@ HEADERS += src/version_check.h \
            src/projectionnode.h \
            src/cgaladvnode.h \
            src/importnode.h \
+           src/import.h \
            src/transformnode.h \
            src/colornode.h \
            src/rendernode.h \
@@ -449,6 +450,9 @@ SOURCES += \
            src/export_nef.cc \
            src/export_png.cc \
            src/import.cc \
+           src/import_stl.cc \
+           src/import_off.cc \
+           src/import_svg.cc \
            src/renderer.cc \
            src/colormap.cc \
            src/ThrownTogetherRenderer.cc \
