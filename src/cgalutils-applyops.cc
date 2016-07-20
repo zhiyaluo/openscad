@@ -379,8 +379,10 @@ namespace CGALUtils {
 					for (std::list<CGAL::Polyhedron_3<Hull_kernel>>::iterator i = result_parts.begin(); i != result_parts.end(); ++i) {
 						PolySet ps(3,true);
 						createPolySetFromPolyhedron(*i, ps);
-						fake_children.push_back(std::make_pair((const AbstractNode*)NULL,
-															   shared_ptr<const Geometry>(createNefPolyhedronFromGeometry(ps))));
+						fake_children.push_back({
+							(const AbstractNode*)NULL,
+							shared_ptr<const Geometry>(createNefPolyhedronFromGeometry(ps))
+						});
 					}
 					CGAL_Nef_polyhedron *N = CGALUtils::applyOperator(fake_children, OPENSCAD_UNION);
 					// FIXME: This hould really never throw.

@@ -216,9 +216,6 @@ AbstractNode *ColorModule::instantiate(const Context *ctx, const ModuleInstantia
 {
 	ColorNode *node = new ColorNode(inst);
 
-	node->color[0] = node->color[1] = node->color[2] = -1.0;
-	node->color[3] = 1.0;
-
 	AssignmentList args;
 
 	args += Assignment("c"), Assignment("alpha");

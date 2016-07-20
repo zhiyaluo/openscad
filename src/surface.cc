@@ -119,7 +119,7 @@ void SurfaceNode::convert_image(img_data_t &data, std::vector<unsigned char> &im
 			long idx = 4 * (y * width + x);
 			double pixel = 0.2126 * img[idx] + 0.7152 * img[idx + 1] + 0.0722 * img[idx + 2];
 			double z = 100.0/255 * (invert ? 1 - pixel : pixel);
-			data[std::make_pair(height - 1 - y, x)] = z;
+			data[{height - 1 - y, x}] = z;
 		}
 	}
 }
@@ -192,7 +192,7 @@ img_data_t SurfaceNode::read_dat(std::string filename) const
 		try {
 			for(const auto &token : tokens) {
 				double v = boost::lexical_cast<double>(token);
-				data[std::make_pair(lines, col++)] = v;
+				data[{lines, col++}] = v;
 				if (col > columns) columns = col;
 				min_val = std::min(v-1, min_val);
 			}
@@ -231,10 +231,10 @@ const Geometry *SurfaceNode::createGeometry() const
 	for (int i = 1; i < lines; i++)
 	for (int j = 1; j < columns; j++)
 	{
-		double v1 = data[std::make_pair(i-1, j-1)];
-		double v2 = data[std::make_pair(i-1, j)];
-		double v3 = data[std::make_pair(i, j-1)];
-		double v4 = data[std::make_pair(i, j)];
+		double v1 = data[{i-1, j-1}];
+		double v2 = data[{i-1, j}];
+		double v3 = data[{i, j-1}];
+		double v4 = data[{i, j}];
 		double vx = (v1 + v2 + v3 + v4) / 4;
 
 		p->append_poly();
@@ -262,14 +262,14 @@ const Geometry *SurfaceNode::createGeometry() const
 	{
 		p->append_poly();
 		p->append_vertex(ox + 0, oy + i-1, min_val);
-		p->append_vertex(ox + 0, oy + i-1, data[std::make_pair(i-1, 0)]);
-		p->append_vertex(ox + 0, oy + i, data[std::make_pair(i, 0)]);
+		p->append_vertex(ox + 0, oy + i-1, data[{i-1, 0}]);
+		p->append_vertex(ox + 0, oy + i, data[{i, 0}]);
 		p->append_vertex(ox + 0, oy + i, min_val);
 
 		p->append_poly();
 		p->insert_vertex(ox + columns-1, oy + i-1, min_val);
-		p->insert_vertex(ox + columns-1, oy + i-1, data[std::make_pair(i-1, columns-1)]);
-		p->insert_vertex(ox + columns-1, oy + i, data[std::make_pair(i, columns-1)]);
+		p->insert_vertex(ox + columns-1, oy + i-1, data[{i-1, columns-1}]);
+		p->insert_vertex(ox + columns-1, oy + i, data[{i, columns-1}]);
 		p->insert_vertex(ox + columns-1, oy + i, min_val);
 	}
 
@@ -277,14 +277,14 @@ const Geometry *SurfaceNode::createGeometry() const
 	{
 		p->append_poly();
 		p->insert_vertex(ox + i-1, oy + 0, min_val);
-		p->insert_vertex(ox + i-1, oy + 0, data[std::make_pair(0, i-1)]);
-		p->insert_vertex(ox + i, oy + 0, data[std::make_pair(0, i)]);
+		p->insert_vertex(ox + i-1, oy + 0, data[{0, i-1}]);
+		p->insert_vertex(ox + i, oy + 0, data[{0, i}]);
 		p->insert_vertex(ox + i, oy + 0, min_val);
 
 		p->append_poly();
 		p->append_vertex(ox + i-1, oy + lines-1, min_val);
-		p->append_vertex(ox + i-1, oy + lines-1, data[std::make_pair(lines-1, i-1)]);
-		p->append_vertex(ox + i, oy + lines-1, data[std::make_pair(lines-1, i)]);
+		p->append_vertex(ox + i-1, oy + lines-1, data[{lines-1, i-1}]);
+		p->append_vertex(ox + i, oy + lines-1, data[{lines-1, i}]);
 		p->append_vertex(ox + i, oy + lines-1, min_val);
 	}
 

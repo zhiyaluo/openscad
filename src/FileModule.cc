@@ -120,7 +120,7 @@ bool FileModule::handleDependencies()
 			wasmissing = true;
 			fs::path fullpath = find_valid_path(this->path, filename);
 			if (!fullpath.empty()) {
-				updates.push_back(std::make_pair(filename, fullpath.generic_string()));
+				updates.push_back({filename, fullpath.generic_string()});
 				filename = fullpath.generic_string();
 			}
 			else {

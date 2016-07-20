@@ -355,7 +355,7 @@ void GeometryEvaluator::addToParent(const State &state,
 {
 	this->visitedchildren.erase(node.index());
 	if (state.parent()) {
-		this->visitedchildren[state.parent()->index()].push_back(std::make_pair(&node, geom));
+		this->visitedchildren[state.parent()->index()].push_back({&node, geom});
 	}
 	else {
 		// Root node

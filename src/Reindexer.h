@@ -24,7 +24,7 @@ public:
     typename std::unordered_map<T, int>::const_iterator iter = this->map.find(val);
     if (iter != this->map.end()) return iter->second;
     else {
-      this->map.insert(std::make_pair(val, this->map.size()));
+      this->map[val] = this->map.size();
       return this->map.size() - 1;
     }
   }

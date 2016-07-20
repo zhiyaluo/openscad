@@ -58,7 +58,7 @@ void ThrownTogetherRenderer::draw(bool /*showfaces*/, bool showedges) const
 void ThrownTogetherRenderer::renderChainObject(const CSGChainObject &csgobj, bool highlight_mode,
 																							 bool background_mode, bool showedges, bool fberror, OpenSCADOperator type) const
 {
-	if (this->geomVisitMark[std::make_pair(csgobj.leaf->geom.get(), &csgobj.leaf->matrix)]++ > 0) return;
+	if (this->geomVisitMark[{csgobj.leaf->geom.get(), &csgobj.leaf->matrix}]++ > 0) return;
 	const Color4f &c = csgobj.leaf->color;
 	csgmode_e csgmode = csgmode_e(
 		(highlight_mode ? 
