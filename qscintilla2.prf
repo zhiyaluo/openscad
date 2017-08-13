@@ -12,6 +12,11 @@ LIBS += -L$$[QT_INSTALL_LIBS]
 
 QT5LIB=qt5scintilla2
 
+#nix
+#INCLUDEPATH += /nix/store/g0mladgpadarbhynjznjh2124q0k0bi6-qscintilla-qt5-2.9.4/include
+#LIBS += -L/nix/store/g0mladgpadarbhynjznjh2124q0k0bi6-qscintilla-qt5-2.9.4/lib
+#QT5LIB=qscintilla2 # nix
+
 unix:linux* {
     FEDORA32LIBS=/usr/lib/libqscintilla2-qt5.so
     FEDORA64LIBS=/usr/lib64/libqscintilla2-qt5.so
