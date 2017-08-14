@@ -188,30 +188,29 @@ script to help you:
 
     ./scripts/check-dependencies.sh
 
-Take care that you don't have old local copies anywhere (/usr/local/). 
 If all dependencies are present and of a high enough version, skip ahead 
 to the Compilation instructions. 
 
 ### Building for Linux/BSD on systems with older or missing dependencies
 
 If some of your system dependency libraries are missing or old, then you 
-can download and build newer versions into $HOME/openscad_deps by 
-following this process. First, run the script that sets up the 
-environment variables. 
+can use the Nix system to install them for you. This will not interfere 
+with your system libraries and will allow you to build OpenSCAD without 
+interfering with your system configuration.
 
-    source ./scripts/setenv-unibuild.sh
+First, visit the Nix website at https://nixos.org/nix/ and follow the 
+installation instructions. You will need "sudo" access. It will install
+nix by default under the /nix/ folder.
 
-Then run the script to compile all the prerequisite libraries above:
+Then run the script to start up a nix-shell environment with the 
+openscad dependencies setup properly:
 
-    ./scripts/uni-build-dependencies.sh
+    ./scripts/nixshell-run.sh
 
-Note that huge dependencies like gcc, qt, or glib2 are not included 
-here, only the smaller ones (boost, CGAL, opencsg, etc). After the 
-build, again check dependencies.
-
-    ./scripts/check-dependencies.sh
-
-After that, follow the Compilation instructions below.
+This will autodownload cached versions of nix libraries and may take 
+several gigabytes of diskspace. It might also create a __nix_qt5__ 
+subdirectory. You should now be in a shell that says 'nix-shell', from 
+which you can follow the Compilation instructions below.
 
 ### Building for Windows
 
