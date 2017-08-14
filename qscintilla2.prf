@@ -10,12 +10,7 @@ INCLUDEPATH += $$[QT_INSTALL_HEADERS]
 
 LIBS += -L$$[QT_INSTALL_LIBS]
 
-QT5LIB=qt5scintilla2
-
-#nix
-#INCLUDEPATH += /nix/store/g0mladgpadarbhynjznjh2124q0k0bi6-qscintilla-qt5-2.9.4/include
-#LIBS += -L/nix/store/g0mladgpadarbhynjznjh2124q0k0bi6-qscintilla-qt5-2.9.4/lib
-#QT5LIB=qscintilla2 # nix
+QT5LIB = qt5scintilla2
 
 unix:linux* {
     FEDORA32LIBS=/usr/lib/libqscintilla2-qt5.so
@@ -23,6 +18,11 @@ unix:linux* {
     exists($$FEDORA32LIBS) | exists($$FEDORA64LIBS) {
         QT5LIB=qscintilla2-qt5
     }
+}
+
+NIX_FLAG = $$(IN_NIX_SHELL)
+!isEmpty(NIX_FLAG) {
+    QT5LIB = qscintilla2
 }
 
 CONFIG(debug, debug|release) {
