@@ -9,7 +9,7 @@
 
 nix-shell -p pkgconfig gcc gnumake \
    opencsg cgal gmp mpfr eigen \
-   boost flex bison \
+   boost flex bison gettext \
    glib libxml2 libzip harfbuzz freetype fontconfig \
    glew xorg.libX11 xorg_sys_opengl \
    qt5.full qt5.qtbase libsForQt5.qscintilla
