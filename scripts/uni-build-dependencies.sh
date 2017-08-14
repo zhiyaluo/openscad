@@ -1,5 +1,17 @@
 #!/bin/sh -e
 
+if [ "`echo $* | grep override `" ]; then
+  echo override
+else
+  echo this script is unmaintained as of 2017. it has been replaced
+  echo by use of the 'Nix' system, "(http://nixos.org/nix)". please see
+  echo the README.md for more details.
+  echo
+  echo if you still want to use this script, please rerun it with --override
+  echo please keep in mind that it may not work.
+  exit
+fi
+
 # uni-build-dependencies by don bright 2012. copyright assigned to
 # Marius Kintel and Clifford Wolf, 2012. released under the GPL 2, or
 # later, as described in the file named 'COPYING' in OpenSCAD's project root.
