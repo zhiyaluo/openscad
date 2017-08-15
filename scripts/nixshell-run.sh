@@ -16,3 +16,9 @@ nix-shell -p pkgconfig gcc gnumake \
 #   qt48Full qscintilla
 
 
+# tested qmake build on
+# ubuntu 16.04  amd64 qemu
+# ubuntu 14.04  amd64 qemu
+# ubuntu 12.04  amd64 qemu
+# fedora 24     amd64 qemu
+
