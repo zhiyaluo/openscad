@@ -5,10 +5,13 @@ if [ "`echo $* | grep override `" ]; then
 else
   echo this script is unmaintained as of 2017. it has been replaced
   echo by use of the 'Nix' system, "(http://nixos.org/nix)". please see
-  echo the README.md for more details.
+  echo the README.md for more details. this is due to the ever growing
+  echo number of dependencies making it unfeasible to maintain a specialized
+  echo build tree that would work across various linux versions.
   echo
   echo if you still want to use this script, please rerun it with --override
-  echo please keep in mind that it may not work.
+  echo please keep in mind that it may not work and you will have to fix it
+  echo on your own.
   exit
 fi
 

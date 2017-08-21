@@ -6,6 +6,23 @@
 # on Nix's github issue here:
 # https://github.com/NixOS/nixpkgs/issues/9415#issuecomment-170661702
 #
+# The basic theory is like this. Nix has it's own libGL.so, but it doesnt
+# have any specific DRI GL drivers, such as the i965_dri.so file for
+# Intel(TM) video chips. Instead nix's code will search a specific path,
+# /run/opengl-driver/lib/dri when it tries to load those drivers.
+# Therefore, we must create symlink of the drivers under that path, linking
+# to their true location in the filesystem. As well as everything
+# they depend on, like libdrm_intel.so and whatnot.
+#
+# The other trick is we have to use
+# LD_LIBRARY_PATH=/run/opengl-driver/lib/dri when running openscad. This
+# allows i965_dri.so various routines to load their own dependencies
+# properly. However this gets a bit tricky since it could cause
+# libraries in that path to interfere with Nix libraries. So we can't
+# allow i965_dri.so to use the system's libc.so.5. We only copy certain
+# dependencies over to /run/opengl-driver/lib/dri
+# and hope that ones like libc and libm are stable enough that the
+# the difference between them and Nix's will not matter too much.
 
 if [ ! $IN_NIX_SHELL ]; then
   echo sorry, this needs to be run from within nix-shell environment. exiting.
@@ -80,7 +97,10 @@ find_nixstore_dir_for() {
 }
 
 find_shlibs() {
-  shlibs=`readelf -d $1 | grep NEED | sed s/'\]'//g | sed s/'\['//g | awk ' { print $5 } '`
+  find_shlib=$1
+  #shlibs=`readelf -d $1 | grep NEED | sed s/'\]'//g | sed s/'\['//g | awk ' { print $5 } '`
+  shlibs=`ldd $find_shlib | grep "=>" | grep -v "vdso.so" | grep -v "nix.store" | awk ' { print $1 } ' `
+  #shlibs=`readelf -d $1 | grep NEED | sed s/'\]'//g | sed s/'\['//g | awk ' { print $5 } '`
   echo $shlibs
 }
 
@@ -103,8 +123,8 @@ SYSTEM_SWRAST_DRIVERDIR=$(find_swrast_driverdir)
 RUN_OGL_LIBGLDIR=/run/opengl-driver/lib
 RUN_OGL_DRIDIR=/run/opengl-driver/lib/dri
 
-#sudo rm -f /run/opengl-driver/lib/dri/*
-#sudo rm -f /run/opengl-driver/lib/*.so
+sudo rm -f /run/opengl-driver/lib/dri/*
+sudo rm -f /run/opengl-driver/lib/*.so
 
 SYS_LIBGL_SO_FILE=$(find_regular_file_in_dir libGL.so $SYSTEM_MESA_LIBGLDIR)
 #sudo ln -sf $SYS_LIBGL_SO_FILE $RUN_OGL_LIBGLDIR/libGL.so
@@ -114,14 +134,15 @@ symlink_if_not_there $SYS_I965_SO_FILE $RUN_OGL_DRIDIR/i965_dri.so
 i965_dep_libs=$(find_shlibs $SYS_I965_SO_FILE)
 sys_libdir1=`readlink -f $SYSTEM_MESA_LIBGLDIR/..`
 sys_libdir2=`echo $sys_libdir1 | sed s/\\\/usr//g`
+# pciaccess comes from libdrm_intel.so
 for filenm in $i965_dep_libs libpciaccess.so.0 ; do
   fullnm1=$sys_libdir1/$filenm
   fullnm2=$sys_libdir2/$filenm
   for fullnm in $fullnm1 $fullnm2; do
-    if [ "`echo $filenm | egrep \"(libc.so|libm.so|libstdc|libgcc|pthread|libdl)\"`" ]; then
-      echo skipping $filenm
-    elif [ -e $fullnm ]; then
+    if [ -e $fullnm ]; then
       symlink_if_not_there $fullnm $RUN_OGL_DRIDIR/$filenm
+    else
+      echo skipping $fullnm
     fi
   done
 done
