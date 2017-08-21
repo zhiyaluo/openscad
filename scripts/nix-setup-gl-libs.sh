@@ -11,10 +11,6 @@ if [ ! $IN_NIX_SHELL ]; then
   echo sorry, this needs to be run from within nix-shell environment. exiting.
   exit
 fi
-if [ ! "`command -v rsync`" ]; then
-  echo sorry, this script, $*, needs rsync. exiting.
-  exit
-fi
 if [ ! "`command -v glxinfo`" ]; then
   echo sorry, this script, $*, needs glxinfo. exiting.
   exit
@@ -25,15 +21,6 @@ if [ ! "`command -v dirname`" ]; then
 fi
 if [ ! "`command -v ldd`" ]; then
   echo sorry, this script, $*, needs ldd. exiting.
-  exit
-fi
-if [ ! "`command -v patchelf`" ]; then
-  echo sorry, this script requires patchelf from Nix pkgs
-  exit
-fi
-if [ ! "`which patchelf | grep nix`" ]; then
-  echo sorry, this script requires Nixs own patchelf, not system patchelf
-  echo please run this script under nix-shell
   exit
 fi
 
