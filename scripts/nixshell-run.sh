@@ -27,8 +27,6 @@ nix-shell -p pkgconfig gcc gnumake \
    glib libxml2 libzip harfbuzz freetype fontconfig \
    glew xorg.libX11 xorg_sys_opengl \
    qt5.full qt5.qtbase libsForQt5.qscintilla \
-   patchelf \
-   libgcrypt libdrm libgpgerror xorg.libpciaccess \
    llvm \
    --command "$glsetup;return"
 #   qt48Full qscintilla

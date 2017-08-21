@@ -123,8 +123,8 @@ SYSTEM_SWRAST_DRIVERDIR=$(find_swrast_driverdir)
 RUN_OGL_LIBGLDIR=/run/opengl-driver/lib
 RUN_OGL_DRIDIR=/run/opengl-driver/lib/dri
 
-sudo rm -f /run/opengl-driver/lib/dri/*
-sudo rm -f /run/opengl-driver/lib/*.so
+#sudo rm -f /run/opengl-driver/lib/dri/*
+#sudo rm -f /run/opengl-driver/lib/*.so
 
 SYS_LIBGL_SO_FILE=$(find_regular_file_in_dir libGL.so $SYSTEM_MESA_LIBGLDIR)
 #sudo ln -sf $SYS_LIBGL_SO_FILE $RUN_OGL_LIBGLDIR/libGL.so
