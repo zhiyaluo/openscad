@@ -1,30 +1,63 @@
 # This script enables use of OpenGL(TM) drivers when OpenSCAD is built
 # under the Nix packaging system.
 #
-# As of 2017 Nix did not include working GL system, so it is necessary to
-# use special scripts like this as a workaround. This work was pioneered
-# on Nix's github issue here:
-# https://github.com/NixOS/nixpkgs/issues/9415#issuecomment-170661702
+# As of 2017 Nix did not include simple GL setup, so this script
+# is a workaround.
 #
-# The basic theory is like this. Nix has it's own libGL.so, but it doesnt
-# have any specific DRI GL drivers, such as the i965_dri.so file for
-# Intel(TM) video chips. Instead nix's code will search a specific path,
-# /run/opengl-driver/lib/dri when it tries to load those drivers.
-# Therefore, we must create symlink of the drivers under that path, linking
-# to their true location in the filesystem. As well as everything
-# they depend on, like libdrm_intel.so and whatnot.
+# The basic operation is as follows:
+# Nix has it's own version of Mesa libGL.so. Programs that use GL will
+# cause the dynamic-linker to load libGL.so, which will in turn figure
+# out which video card is being used, then find a driver file for it,
+# and load it using dlopen() instead of the dynamic linker.
 #
-# The other trick is we have to use
-# LD_LIBRARY_PATH=/run/opengl-driver/lib/dri when running openscad. This
-# allows i965_dri.so various routines to load their own dependencies
-# properly. However this gets a bit tricky since it could cause
-# libraries in that path to interfere with Nix libraries. So we can't
-# allow i965_dri.so to use the system's libc.so.5. We only copy certain
-# dependencies over to /run/opengl-driver/lib/dri
-# and hope that ones like libc and libm are stable enough that the
-# the difference between them and Nix's will not matter too much.
+# These driver files are Direct Rendering Interface, or DRI, files,
+# and they are usually under some /lib directory with a 'dri' name,
+# for example on ubuntu linux 16 they are here:
+#
+# don@serebryanya:~/src/openscad/binnix$ ls /usr/lib/x86_64-linux-gnu/dri/
+# dummy_drv_video.so  nouveau_dri.so        r600_dri.so       vdpau_drv_video.so
+# i915_dri.so         nouveau_vieux_dri.so  radeon_dri.so     virtio_gpu_dri.so
+# i965_dri.so         nvidia_drv_video.so   radeonsi_dri.so   vmwgfx_dri.so
+# i965_drv_video.so   r200_dri.so           s3g_drv_video.so
+# kms_swrast_dri.so   r300_dri.so           swrast_dri.so
+#
+# Now, Nix's libGL.so is specially built to search for these dri files under
+# /run/opengl-driver/lib/dri , however you can override this by setting the
+# LIBGL_DRIVERS_DIR environment variable before running your program.
+#
+# There is a catch. Those dri.so files in turn depend on other non-nix
+# system libraries as well. For example lets look at i965_dri.so on Ubuntu16
+#
+# don@serebryanya:~/src/openscad/binnix$ ldd /usr/lib/x86_64-linux-gnu/dri/i965_dri.so 
+#  linux-vdso.so.1 =>  (0x00007fff20071000)
+#  libgcrypt.so.20 => /lib/x86_64-linux-gnu/libgcrypt.so.20 (0x00007fb55410c000)
+#  libdrm_intel.so.1 => /usr/lib/x86_64-linux-gnu/libdrm_intel.so.1 (0x00007fb553ee9000)
+#  libdrm_nouveau.so.2 => /usr/lib/x86_64-linux-gnu/libdrm_nouveau.so.2 (0x00007fb553ce0000)
+#  libdrm_radeon.so.1 => /usr/lib/x86_64-linux-gnu/libdrm_radeon.so.1 (0x00007fb553ad4000)
+#  libdrm.so.2 => /usr/lib/x86_64-linux-gnu/libdrm.so.2 (0x00007fb5538c3000)
+#  libexpat.so.1 => /lib/x86_64-linux-gnu/libexpat.so.1 (0x00007fb553699000)
+#  libpthread.so.0 => /lib/x86_64-linux-gnu/libpthread.so.0 (0x00007fb55347c000)
+#  libdl.so.2 => /lib/x86_64-linux-gnu/libdl.so.2 (0x00007fb553278000)
+#  libstdc++.so.6 => /usr/lib/x86_64-linux-gnu/libstdc++.so.6 (0x00007fb552ef5000)
+#  libm.so.6 => /lib/x86_64-linux-gnu/libm.so.6 (0x00007fb552bec000)
+#  libc.so.6 => /lib/x86_64-linux-gnu/libc.so.6 (0x00007fb552822000)
+#  libgcc_s.so.1 => /lib/x86_64-linux-gnu/libgcc_s.so.1 (0x00007fb55260b000)
+#  libgpg-error.so.0 => /lib/x86_64-linux-gnu/libgpg-error.so.0 (0x00007fb5523f7000)
+#  libpciaccess.so.0 => /usr/lib/x86_64-linux-gnu/libpciaccess.so.0 (0x00007fb5521ed000)
+#  /lib64/ld-linux-x86-64.so.2 (0x00005566de529000)
+#  libz.so.1 => /lib/x86_64-linux-gnu/libz.so.1 (0x00007fb551fd2000)
+#
+# Now we could use Nix supplied .so files instead of these system .so files,
+# but there is no guarantee they will be compatible. How to deal with this?
+#
+# The answer is deep within the linking system and binary executable
+# format used on linux, called ELF (Executable Linkable Format). The key
+# is a feature of ELF called rpath.
+#
+# (to be continued)
 #
 # See Also
+# https://github.com/NixOS/nixpkgs/issues/9415#issuecomment-170661702
 # https://anonscm.debian.org/git/pkg-xorg/lib/mesa.git/tree/docs/libGL.txt
 # https://github.com/deepfire/nix-install-vendor-gl
 # https://nixos.org/patchelf.html
@@ -106,7 +139,8 @@ find_nixstore_dir_for() {
 find_shlibs() {
   find_shlib=$1
   #shlibs=`readelf -d $1 | grep NEED | sed s/'\]'//g | sed s/'\['//g | awk ' { print $5 } '`
-  shlibs=`ldd $find_shlib | grep "=>" | grep -v "vdso.so" | grep -v "nix.store" | awk ' { print $1 } ' `
+  #shlibs=`ldd $find_shlib | grep "=>" | grep -v "vdso.so" | grep -v "nix.store" | awk ' { print $1 } ' `
+  shlibs=`ldd $find_shlib | grep "=>" | grep -v "vdso.so" | awk ' { print $1 } ' `
   #shlibs=`readelf -d $1 | grep NEED | sed s/'\]'//g | sed s/'\['//g | awk ' { print $5 } '`
   echo $shlibs
 }
@@ -134,23 +168,23 @@ set -e
 SYSTEM_MESA_LIBGLDIR=$(find_system_libgldir)
 SYSTEM_DRIDIR=$(find_DRIDIR)
 SYSTEM_SWRAST_DRIVERDIR=$(find_swrast_driverdir)
-#RUN_OGL_LIBGLDIR=/run/opengl-driver/lib
-#RUN_OGL_DRIDIR=/run/opengl-driver/lib/dri
-RUN_OGL_LIBGLDIR=/tmp/nog/lib
-RUN_OGL_DRIDIR=/tmp/nog/lib/dri
+#GL_LIBGLDIR=/run/opengl-driver/lib
+#GL_DRI_DIR=/run/opengl-driver/lib/dri
+GL_LIBGLDIR=/tmp/nog/lib
+GL_DRI_DIR=/tmp/nog/lib/dri
 
 #sudo rm -f /run/opengl-driver/lib/dri/*
 #sudo rm -f /run/opengl-driver/lib/*.so
 
 SYS_LIBGL_SO_FILE=$(find_regular_file_in_dir libGL.so $SYSTEM_MESA_LIBGLDIR)
-#sudo ln -sf $SYS_LIBGL_SO_FILE $RUN_OGL_LIBGLDIR/libGL.so
+#sudo ln -sf $SYS_LIBGL_SO_FILE $GL_LIBGLDIR/libGL.so
 
 SYS_I965_SO_FILE=$(find_regular_file_in_dir i965_dri.so $SYSTEM_DRIDIR)
-symlink_if_not_there $SYS_I965_SO_FILE $RUN_OGL_DRIDIR/i965_dri.so
+symlink_if_not_there $SYS_I965_SO_FILE $GL_DRI_DIR/i965_dri.so
 i965_dep_libs=$(find_shlibs $SYS_I965_SO_FILE)
 sys_libdir1=`readlink -f $SYSTEM_MESA_LIBGLDIR/..`
 sys_libdir2=`echo $sys_libdir1 | sed s/\\\/usr//g`
-# pciaccess comes from libdrm_intel.so
+# pciaccess is needed by libdrm_intel.so
 for filenm in $i965_dep_libs libpciaccess.so.0 ; do
   fullnm1=$sys_libdir1/$filenm
   fullnm2=$sys_libdir2/$filenm
@@ -158,8 +192,8 @@ for filenm in $i965_dep_libs libpciaccess.so.0 ; do
     if [ -e $fullnm ]; then
       fullnm_true=`readlink -f $fullnm `
       basenm_true=`basename $fullnm_true`
-      symlink_if_not_there $fullnm_true $RUN_OGL_DRIDIR/$basenm_true
-      symlink_if_not_there $fullnm $RUN_OGL_DRIDIR/$filenm
+      symlink_if_not_there $fullnm_true $GL_DRI_DIR/$basenm_true
+      symlink_if_not_there $fullnm $GL_DRI_DIR/$filenm
     else
       echo skipping $fullnm
     fi
