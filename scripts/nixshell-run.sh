@@ -28,7 +28,7 @@ nix-shell -p pkgconfig gcc gnumake \
    glew xorg.libX11 xorg_sys_opengl \
    qt5.full qt5.qtbase libsForQt5.qscintilla \
    llvm \
-   --command "$glsetup;return"
+   --command "$glsetup;export LIBGL_DRIVERS_DIR=/tmp/nog/lib/dri;return"
 #   qt48Full qscintilla
 
 # tested qmake build on

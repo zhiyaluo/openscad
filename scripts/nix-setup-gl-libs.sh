@@ -23,6 +23,13 @@
 # dependencies over to /run/opengl-driver/lib/dri
 # and hope that ones like libc and libm are stable enough that the
 # the difference between them and Nix's will not matter too much.
+#
+# See Also
+# https://anonscm.debian.org/git/pkg-xorg/lib/mesa.git/tree/docs/libGL.txt
+# https://github.com/deepfire/nix-install-vendor-gl
+# https://nixos.org/patchelf.html
+# https://en.wikipedia.org/wiki/Direct_Rendering_Manager
+# rpath, mmap, strace, shared libraries, linkers, loaders
 
 if [ ! $IN_NIX_SHELL ]; then
   echo sorry, this needs to be run from within nix-shell environment. exiting.
@@ -107,8 +114,15 @@ find_shlibs() {
 symlink_if_not_there() {
   original=$1
   target=$2
+  target_dir=`dirname $target`
+  if [ ! -d $target_dir ]; then
+    mkdir -p $target_dir
+  fi
   if [ ! -e $target ]; then
-    sudo ln -sf $original $target
+    #sudo ln -sf $original $target
+    sudo cp -av $original $target
+    sudo chown $USER.$USER $target
+    patchelf --set-rpath /tmp/nog/lib/dri $target
   else
     echo $target already exist, not linking
   fi
@@ -120,8 +134,10 @@ set -e
 SYSTEM_MESA_LIBGLDIR=$(find_system_libgldir)
 SYSTEM_DRIDIR=$(find_DRIDIR)
 SYSTEM_SWRAST_DRIVERDIR=$(find_swrast_driverdir)
-RUN_OGL_LIBGLDIR=/run/opengl-driver/lib
-RUN_OGL_DRIDIR=/run/opengl-driver/lib/dri
+#RUN_OGL_LIBGLDIR=/run/opengl-driver/lib
+#RUN_OGL_DRIDIR=/run/opengl-driver/lib/dri
+RUN_OGL_LIBGLDIR=/tmp/nog/lib
+RUN_OGL_DRIDIR=/tmp/nog/lib/dri
 
 #sudo rm -f /run/opengl-driver/lib/dri/*
 #sudo rm -f /run/opengl-driver/lib/*.so
@@ -140,6 +156,9 @@ for filenm in $i965_dep_libs libpciaccess.so.0 ; do
   fullnm2=$sys_libdir2/$filenm
   for fullnm in $fullnm1 $fullnm2; do
     if [ -e $fullnm ]; then
+      fullnm_true=`readlink -f $fullnm `
+      basenm_true=`basename $fullnm_true`
+      symlink_if_not_there $fullnm_true $RUN_OGL_DRIDIR/$basenm_true
       symlink_if_not_there $fullnm $RUN_OGL_DRIDIR/$filenm
     else
       echo skipping $fullnm
@@ -150,7 +169,4 @@ done
 set +x
 set +e
 
-echo run openscad like so:
-#echo LD_LIBRARY_PATH=/run/opengl-driver/lib:/run/opengl-driver/lib/dri ./openscad
-echo LD_LIBRARY_PATH=/run/opengl-driver/lib/dri ./openscad
 
