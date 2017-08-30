@@ -80,7 +80,7 @@
 # sudo cat /proc/$Xserverprocessid/maps | grep dri
 # sudo lsof -p $Xserverprocessid | grep dri
 
-
+export DISPLAY=:0
 
 if [ ! $IN_NIX_SHELL ]; then
   echo sorry, this needs to be run from within nix-shell environment. exiting.
@@ -133,8 +133,16 @@ find_DRI_DIR() {
 }
 
 find_driver_used_by_glxinfo() {
-  sttxt=`strace -f $glxinfobin 2>&1 | grep open`
-  driline=`echo $sttxt | grep dri | grep -v open..dev | grep -v NOENT`
+  #  glxinfo can hang.
+  logfile=$1/glxinfo.strace.txt
+  sttxt=`strace -f $glxinfobin &> $logfile & `
+  pidstrace=$!
+  sleep 1;
+  set +e
+  kill $pidstrace
+  set -e
+  sttxt=`cat $logfile`
+  driline=`echo $sttxt | grep open | grep dri | grep -v open..dev | grep -v NOENT`
   drifilepath=`echo $driline | sed s/\\"/\\ /g - | awk ' { print $2 } '`
   echo $drifilepath
 }
@@ -196,9 +204,10 @@ SYSTEM_SWRAST_DRIVERDIR=$(find_swrast_driverdir)
 #OSCD_NIXGL_DIR=/run/opengl-driver/lib/dri
 #OSCD_NIXGL_DIR=$PWD/__oscd_nix_gl__/dri
 OSCD_NIXGL_DIR=$1
+exit
 
 SYS_LIBGL_SO_FILE=$(find_regular_file_in_dir libGL.so $SYSTEM_MESA_LIBGL_DIR)
-SYS_DRI_SO_FILE=$(find_driver_used_by_glxinfo)
+SYS_DRI_SO_FILE=$(find_driver_used_by_glxinfo $OSCD_NIXGL_DIR)
 #echo install_under_specialdir $SYS_DRI_SO_FILE $OSCD_NIXGL_DIR
 echo driver_dep_libs=$(find_shlibs $SYS_DRI_SO_FILE)
 for filenm in $driver_dep_libs ; do
