@@ -6,13 +6,13 @@
 #
 # The basic operation is as follows:
 # Nix has it's own version of Mesa libGL.so. Programs that use GL will
-# cause the dynamic-linker to load libGL.so, which will in turn figure
+# cause the dynamic-linker to load nix's libGL.so, which will in turn figure
 # out which video card is being used, then find a driver file for it,
 # and load it using dlopen() instead of the dynamic linker.
 #
 # These driver files are Direct Rendering Interface, or DRI, files,
-# and they are usually under some /lib directory with a 'dri' name,
-# for example on ubuntu linux 16 they are here:
+# On a non-nix system they are usually under some /lib directory 
+# with a 'dri' name, for example on ubuntu linux 16 they are here:
 #
 # don@serebryanya:~/src/openscad/binnix$ ls /usr/lib/x86_64-linux-gnu/dri/
 # dummy_drv_video.so  nouveau_dri.so        r600_dri.so       vdpau_drv_video.so
@@ -21,9 +21,12 @@
 # i965_drv_video.so   r200_dri.so           s3g_drv_video.so
 # kms_swrast_dri.so   r300_dri.so           swrast_dri.so
 #
-# Now, Nix's libGL.so is specially built to search for these dri files under
-# /run/opengl-driver/lib/dri , however you can override this by setting the
-# LIBGL_DRIVERS_DIR environment variable before running your program.
+# However, Nix's libGL.so is specially built to search for these dri files under
+# /run/opengl-driver/lib/dri . There are ways to override this, for example
+# some people use LD_LIBRARY_PATH, but the problem with that is it overrides
+# all libraries. Mesa's LibGL however has a special feature, it reads the
+# environment variable LIBGL_DRIVERS_DIR and will use this path to look
+# for the DRI drivers.
 #
 # There is a catch. Those dri.so files in turn depend on other non-nix
 # system libraries as well. For example lets look at i965_dri.so on Ubuntu16
@@ -50,7 +53,7 @@
 # Now we could use Nix supplied .so files instead of these system .so files,
 # but there is no guarantee they will be compatible. How to deal with this?
 #
-# The answer is deep within the linking system and binary executable
+# The answer is within the linking system and binary executable
 # format used on linux, called ELF (Executable Linkable Format). The key
 # is a feature of ELF called rpath.
 #
@@ -68,6 +71,10 @@ if [ ! $IN_NIX_SHELL ]; then
   echo sorry, this needs to be run from within nix-shell environment. exiting.
   exit
 fi
+if [ ! $1 ]; then
+  echo this script is usually run from openscad/scripts/nixshell-.
+  echo please run with first arg being dir containing modified DRI libs
+fi
 if [ ! "`command -v glxinfo`" ]; then
   echo sorry, this script, $*, needs glxinfo. exiting.
   exit
@@ -81,26 +88,26 @@ if [ ! "`command -v ldd`" ]; then
   exit
 fi
 
-find_system_libgldir() {
+find_system_libGL_DIR() {
   glxinfobin=`which glxinfo`
   libglfile=`ldd $glxinfobin | grep libGL.so | awk ' { print $3 } '`
-  libgldir=`dirname $libglfile`
-  echo $libgldir
+  libGL_DIR=`dirname $libglfile`
+  echo $libGL_DIR
 }
 
-find_DRIDIR() {
-  sysgldir=$(find_system_libgldir)
-  sysgldir_parent=$sysgldir/..
-  i965_drifile=`find $sysgldir_parent | grep i965_dri.so | head -1`
+find_DRI_DIR() {
+  sysGL_DIR=$(find_system_libGL_DIR)
+  sysGL_DIR_parent=$sysGL_DIR/..
+  i965_drifile=`find $sysGL_DIR_parent | grep i965_dri.so | head -1`
   i965dir=`dirname $i965_drifile`
   i965_canonical_dir=`readlink -f $i965dir`
   echo $i965_canonical_dir
 }
 
 find_swrast_driverdir() {
-  sysgldir=$(find_system_libgldir)
-  sysgldir_parent=$sysgldir/..
-  swrast_drifile=`find $sysgldir_parent | grep swrast_dri.so | head -1`
+  sysGL_DIR=$(find_system_libGL_DIR)
+  sysGL_DIR_parent=$sysGL_DIR/..
+  swrast_drifile=`find $sysGL_DIR_parent | grep swrast_dri.so | head -1`
   swrastdir=`dirname $swrast_drifile`
   swrast_canonical_dir=`readlink -f $swrastdir`
   echo $swrast_canonical_dir
@@ -154,9 +161,9 @@ symlink_if_not_there() {
   fi
   if [ ! -e $target ]; then
     #sudo ln -sf $original $target
-    sudo cp -av $original $target
-    sudo chown $USER.$USER $target
-    patchelf --set-rpath /tmp/nog/lib/dri $target
+    cp -v $original $target
+    #sudo chown $USER.$USER $target
+    patchelf --set-rpath $NIXGL_DRI_DIR $target
   else
     echo $target already exist, not linking
   fi
@@ -165,24 +172,26 @@ symlink_if_not_there() {
 set -x
 set -e
 
-SYSTEM_MESA_LIBGLDIR=$(find_system_libgldir)
-SYSTEM_DRIDIR=$(find_DRIDIR)
+SYSTEM_MESA_LIBGL_DIR=$(find_system_libGL_DIR)
+SYSTEM_DRI_DIR=$(find_DRI_DIR)
 SYSTEM_SWRAST_DRIVERDIR=$(find_swrast_driverdir)
-#GL_LIBGLDIR=/run/opengl-driver/lib
-#GL_DRI_DIR=/run/opengl-driver/lib/dri
-GL_LIBGLDIR=/tmp/nog/lib
-GL_DRI_DIR=/tmp/nog/lib/dri
+#NIXGL_LIBGL_DIR=/run/opengl-driver/lib
+#NIXGL_DRI_DIR=/run/opengl-driver/lib/dri
+#NIXGL_LIBGL_DIR=$PWD/__nix_gl__
+#NIXGL_DRI_DIR=$PWD/__nix_gl__/dri
+#NIXGL_LIBGL_DIR=$1/..
+NIXGL_DRI_DIR=$1
 
 #sudo rm -f /run/opengl-driver/lib/dri/*
 #sudo rm -f /run/opengl-driver/lib/*.so
 
-SYS_LIBGL_SO_FILE=$(find_regular_file_in_dir libGL.so $SYSTEM_MESA_LIBGLDIR)
-#sudo ln -sf $SYS_LIBGL_SO_FILE $GL_LIBGLDIR/libGL.so
+SYS_LIBGL_SO_FILE=$(find_regular_file_in_dir libGL.so $SYSTEM_MESA_LIBGL_DIR)
+#sudo ln -sf $SYS_LIBGL_SO_FILE $NIXGL_LIBGL_DIR/libGL.so
 
-SYS_I965_SO_FILE=$(find_regular_file_in_dir i965_dri.so $SYSTEM_DRIDIR)
-symlink_if_not_there $SYS_I965_SO_FILE $GL_DRI_DIR/i965_dri.so
+SYS_I965_SO_FILE=$(find_regular_file_in_dir i965_dri.so $SYSTEM_DRI_DIR)
+symlink_if_not_there $SYS_I965_SO_FILE $NIXGL_DRI_DIR/i965_dri.so
 i965_dep_libs=$(find_shlibs $SYS_I965_SO_FILE)
-sys_libdir1=`readlink -f $SYSTEM_MESA_LIBGLDIR/..`
+sys_libdir1=`readlink -f $SYSTEM_MESA_LIBGL_DIR/..`
 sys_libdir2=`echo $sys_libdir1 | sed s/\\\/usr//g`
 # pciaccess is needed by libdrm_intel.so
 for filenm in $i965_dep_libs libpciaccess.so.0 ; do
@@ -192,8 +201,8 @@ for filenm in $i965_dep_libs libpciaccess.so.0 ; do
     if [ -e $fullnm ]; then
       fullnm_true=`readlink -f $fullnm `
       basenm_true=`basename $fullnm_true`
-      symlink_if_not_there $fullnm_true $GL_DRI_DIR/$basenm_true
-      symlink_if_not_there $fullnm $GL_DRI_DIR/$filenm
+      symlink_if_not_there $fullnm_true $NIXGL_DRI_DIR/$basenm_true
+      symlink_if_not_there $fullnm $NIXGL_DRI_DIR/$filenm
     else
       echo skipping $fullnm
     fi

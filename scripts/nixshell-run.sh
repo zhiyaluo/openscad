@@ -9,6 +9,18 @@
 
 echo nix shell starting, please wait...
 
+if [ $IN_NIX_SHELL ]; then
+  echo already running inside nix-shell, please exit before running
+  echo this script.
+  exit
+fi
+
+if [ ! -e ~/.nix-profile/etc/profile.d/nix.sh ]; then
+  echo i cant find ~/.nix-profile/etc/profile.d/nix.sh
+  echo please install the nix package manager, see http://nixos.org
+  exit
+fi
+
 source ~/.nix-profile/etc/profile.d/nix.sh
 
 # prevent nix-shell from refusing to run because of existing __nix_qt__
@@ -19,6 +31,7 @@ fi
 thisscript=$0
 scriptdir=`dirname $0`
 glsetup=$scriptdir/nix-setup-gl-libs.sh
+DRI_DIR=$PWD/__oscd_nix_gl__
 
 # auto-installs listed packages in nix store
 nix-shell -p pkgconfig gcc gnumake \
@@ -28,7 +41,7 @@ nix-shell -p pkgconfig gcc gnumake \
    glew xorg.libX11 xorg_sys_opengl \
    qt5.full qt5.qtbase libsForQt5.qscintilla \
    llvm \
-   --command "$glsetup;export LIBGL_DRIVERS_DIR=/tmp/nog/lib/dri;return"
+   --command "$glsetup $DRI_DIR;export LIBGL_DRIVERS_DIR=$DRI_DIR;return"
 #   qt48Full qscintilla
 
 # tested qmake build on
