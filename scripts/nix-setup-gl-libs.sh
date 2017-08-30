@@ -4,7 +4,7 @@
 # As of 2017 Nix did not include simple GL setup, so this script
 # is a workaround.
 #
-# It works by creating a subdirectory under the present working directory,
+# This works by creating a subdirectory under the present working directory,
 # named __oscd_nix_gl__, copies the system DRI driver files to this directory,
 # edits their rpath, and uses LIBGL_DRIVERS_DIR to direct Nix's libGL.so
 # to load these drivers.
@@ -64,6 +64,10 @@
 #
 # (to be continued)
 #
+# There is another huge catch. We don't want to copy all the driver files.
+# The less dependencies, the better. What do we do? We find out which
+# is being used, and we copy only what we need.
+#
 # See Also
 # https://github.com/NixOS/nixpkgs/issues/9415#issuecomment-170661702
 # https://anonscm.debian.org/git/pkg-xorg/lib/mesa.git/tree/docs/libGL.txt
@@ -71,6 +75,12 @@
 # https://nixos.org/patchelf.html
 # https://en.wikipedia.org/wiki/Direct_Rendering_Manager
 # rpath, mmap, strace, shared libraries, linkers, loaders
+# https://unix.stackexchange.com/questions/97676/how-to-find-the-driver-module-associated-with-a-device-on-linux
+# https://stackoverflow.com/questions/5103443/how-to-check-what-shared-libraries-are-loaded-at-run-time-for-a-given-process
+# sudo cat /proc/$Xserverprocessid/maps | grep dri
+# sudo lsof -p $Xserverprocessid | grep dri
+
+
 
 if [ ! $IN_NIX_SHELL ]; then
   echo sorry, this needs to be run from within nix-shell environment. exiting.
@@ -83,12 +93,19 @@ if [ ! $1 ]; then
   exit
 fi
 if [ ! "`command -v glxinfo`" ]; then
-  echo sorry, this script, $*, needs glxinfo in your PATH. exiting.
+  echo sorry, this script, $0, needs glxinfo in your PATH. exiting.
   exit
 fi
-if [ "`which glxinfo | grep nix.store`" ]; then
-  echo sorry, glxinfo needs to be system glxinfo, but you have
-  echo nix's glxinfo in your path. please run this from a clean shell.
+glxinfo > /dev/null
+if [ ! $? -eq 0 ]; then
+  echo sorry, your glxinfo appears to be inoperable. please get
+  echo a working glxinfo. perhaps you have not an X11 server started?
+  exit
+fi
+if [ ! "`glxinfo | grep nix.store`" ]; then
+  echo sorry, this script, $0, needs system glxinfo in your PATH.
+  echo it appears your glxinfo is from Nix. please use a clean shell.
+  exit
 fi
 if [ ! "`command -v dirname`" ]; then
   echo sorry, this script, $*, needs dirname. exiting.
@@ -113,6 +130,13 @@ find_DRI_DIR() {
   i965dir=`dirname $i965_drifile`
   i965_canonical_dir=`readlink -f $i965dir`
   echo $i965_canonical_dir
+}
+
+find_driver_used_by_glxinfo() {
+  sttxt=`strace -f $glxinfobin 2>&1 | grep open`
+  driline=`echo $sttxt | grep dri | grep -v open..dev | grep -v NOENT`
+  drifilepath=`echo $driline | sed s/\\"/\\ /g - | awk ' { print $2 } '`
+  echo $drifilepath
 }
 
 find_swrast_driverdir() {
@@ -152,19 +176,15 @@ find_shlibs() {
 }
 
 install_under_specialdir() {
-  original=$1
-  target=$2
-  target_dir=`dirname $target`
+  original_path=$1
+  target_dir=$2
+  target_path=$target_dir
+  #`basename $original_path`
   if [ ! -d $target_dir ]; then
     mkdir -p $target_dir
   fi
-  if [ ! -e $target ]; then
-    #sudo ln -sf $original $target
-    cp -v $original $target
-    patchelf --set-rpath $OSCD_NIXGL_DIR $target
-  else
-    echo $target already exist, not linking
-  fi
+  cp -v $original_path $target_path
+  patchelf --set-rpath $OSCD_NIXGL_DIR $target_path
 }
 
 set -x
@@ -178,25 +198,11 @@ SYSTEM_SWRAST_DRIVERDIR=$(find_swrast_driverdir)
 OSCD_NIXGL_DIR=$1
 
 SYS_LIBGL_SO_FILE=$(find_regular_file_in_dir libGL.so $SYSTEM_MESA_LIBGL_DIR)
-SYS_I965_SO_FILE=$(find_regular_file_in_dir i965_dri.so $SYSTEM_DRI_DIR)
-install_under_specialdir $SYS_I965_SO_FILE $OSCD_NIXGL_DIR/i965_dri.so
-i965_dep_libs=$(find_shlibs $SYS_I965_SO_FILE)
-sys_libdir1=`readlink -f $SYSTEM_MESA_LIBGL_DIR/..`
-sys_libdir2=`echo $sys_libdir1 | sed s/\\\/usr//g`
-# pciaccess is needed by libdrm_intel.so
-for filenm in $i965_dep_libs libpciaccess.so.0 ; do
-  fullnm1=$sys_libdir1/$filenm
-  fullnm2=$sys_libdir2/$filenm
-  for fullnm in $fullnm1 $fullnm2; do
-    if [ -e $fullnm ]; then
-      fullnm_true=`readlink -f $fullnm `
-      basenm_true=`basename $fullnm_true`
-      install_under_specialdir $fullnm_true $OSCD_NIXGL_DIR/$basenm_true
-      install_under_specialdir $fullnm $OSCD_NIXGL_DIR/$filenm
-    else
-      echo skipping $fullnm
-    fi
-  done
+SYS_DRI_SO_FILE=$(find_driver_used_by_glxinfo)
+#echo install_under_specialdir $SYS_DRI_SO_FILE $OSCD_NIXGL_DIR
+echo driver_dep_libs=$(find_shlibs $SYS_DRI_SO_FILE)
+for filenm in $driver_dep_libs ; do
+  echo $filenm
 done
 
 set +x
