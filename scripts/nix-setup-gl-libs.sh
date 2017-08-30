@@ -4,6 +4,11 @@
 # As of 2017 Nix did not include simple GL setup, so this script
 # is a workaround.
 #
+# It works by creating a subdirectory under the present working directory,
+# named __oscd_nix_gl__, copies the system DRI driver files to this directory,
+# edits their rpath, and uses LIBGL_DRIVERS_DIR to direct Nix's libGL.so
+# to load these drivers.
+#
 # The basic operation is as follows:
 # Nix has it's own version of Mesa libGL.so. Programs that use GL will
 # cause the dynamic-linker to load nix's libGL.so, which will in turn figure
@@ -72,12 +77,18 @@ if [ ! $IN_NIX_SHELL ]; then
   exit
 fi
 if [ ! $1 ]; then
-  echo this script is usually run from openscad/scripts/nixshell-.
-  echo please run with first arg being dir containing modified DRI libs
+  echo this script is usually run from openscad/scripts/nixshell-run.sh
+  echo if you are working on the build system, you can try running this
+  echo with first arg being dir containing modified DRI libs
+  exit
 fi
 if [ ! "`command -v glxinfo`" ]; then
-  echo sorry, this script, $*, needs glxinfo. exiting.
+  echo sorry, this script, $*, needs glxinfo in your PATH. exiting.
   exit
+fi
+if [ "`which glxinfo | grep nix.store`" ]; then
+  echo sorry, glxinfo needs to be system glxinfo, but you have
+  echo nix's glxinfo in your path. please run this from a clean shell.
 fi
 if [ ! "`command -v dirname`" ]; then
   echo sorry, this script, $*, needs dirname. exiting.
@@ -113,15 +124,6 @@ find_swrast_driverdir() {
   echo $swrast_canonical_dir
 }
 
-build_rpaths() {
-  result=$1
-  result=$result:/lib
-  result=$result:/usr/lib
-  result=$result:/lib/x86_64-linux-gnu
-  result=$result:/usr/lib/x86_64-linux-gnu
-  echo $result
-}
-
 find_regular_file_in_dir() {
   filepattern_wanted=$1
   dir_name=$2
@@ -145,14 +147,11 @@ find_nixstore_dir_for() {
 
 find_shlibs() {
   find_shlib=$1
-  #shlibs=`readelf -d $1 | grep NEED | sed s/'\]'//g | sed s/'\['//g | awk ' { print $5 } '`
-  #shlibs=`ldd $find_shlib | grep "=>" | grep -v "vdso.so" | grep -v "nix.store" | awk ' { print $1 } ' `
   shlibs=`ldd $find_shlib | grep "=>" | grep -v "vdso.so" | awk ' { print $1 } ' `
-  #shlibs=`readelf -d $1 | grep NEED | sed s/'\]'//g | sed s/'\['//g | awk ' { print $5 } '`
   echo $shlibs
 }
 
-symlink_if_not_there() {
+install_under_specialdir() {
   original=$1
   target=$2
   target_dir=`dirname $target`
@@ -162,8 +161,7 @@ symlink_if_not_there() {
   if [ ! -e $target ]; then
     #sudo ln -sf $original $target
     cp -v $original $target
-    #sudo chown $USER.$USER $target
-    patchelf --set-rpath $NIXGL_DRI_DIR $target
+    patchelf --set-rpath $OSCD_NIXGL_DIR $target
   else
     echo $target already exist, not linking
   fi
@@ -175,21 +173,13 @@ set -e
 SYSTEM_MESA_LIBGL_DIR=$(find_system_libGL_DIR)
 SYSTEM_DRI_DIR=$(find_DRI_DIR)
 SYSTEM_SWRAST_DRIVERDIR=$(find_swrast_driverdir)
-#NIXGL_LIBGL_DIR=/run/opengl-driver/lib
-#NIXGL_DRI_DIR=/run/opengl-driver/lib/dri
-#NIXGL_LIBGL_DIR=$PWD/__nix_gl__
-#NIXGL_DRI_DIR=$PWD/__nix_gl__/dri
-#NIXGL_LIBGL_DIR=$1/..
-NIXGL_DRI_DIR=$1
-
-#sudo rm -f /run/opengl-driver/lib/dri/*
-#sudo rm -f /run/opengl-driver/lib/*.so
+#OSCD_NIXGL_DIR=/run/opengl-driver/lib/dri
+#OSCD_NIXGL_DIR=$PWD/__oscd_nix_gl__/dri
+OSCD_NIXGL_DIR=$1
 
 SYS_LIBGL_SO_FILE=$(find_regular_file_in_dir libGL.so $SYSTEM_MESA_LIBGL_DIR)
-#sudo ln -sf $SYS_LIBGL_SO_FILE $NIXGL_LIBGL_DIR/libGL.so
-
 SYS_I965_SO_FILE=$(find_regular_file_in_dir i965_dri.so $SYSTEM_DRI_DIR)
-symlink_if_not_there $SYS_I965_SO_FILE $NIXGL_DRI_DIR/i965_dri.so
+install_under_specialdir $SYS_I965_SO_FILE $OSCD_NIXGL_DIR/i965_dri.so
 i965_dep_libs=$(find_shlibs $SYS_I965_SO_FILE)
 sys_libdir1=`readlink -f $SYSTEM_MESA_LIBGL_DIR/..`
 sys_libdir2=`echo $sys_libdir1 | sed s/\\\/usr//g`
@@ -201,8 +191,8 @@ for filenm in $i965_dep_libs libpciaccess.so.0 ; do
     if [ -e $fullnm ]; then
       fullnm_true=`readlink -f $fullnm `
       basenm_true=`basename $fullnm_true`
-      symlink_if_not_there $fullnm_true $NIXGL_DRI_DIR/$basenm_true
-      symlink_if_not_there $fullnm $NIXGL_DRI_DIR/$filenm
+      install_under_specialdir $fullnm_true $OSCD_NIXGL_DIR/$basenm_true
+      install_under_specialdir $fullnm $OSCD_NIXGL_DIR/$filenm
     else
       echo skipping $fullnm
     fi
