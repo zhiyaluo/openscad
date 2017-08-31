@@ -1,5 +1,5 @@
-# This script enables use of OpenGL(TM) drivers when OpenSCAD is built
-# under the Nix packaging system.
+# This is a helper script for using OpenGL(TM) drivers when OpenSCAD is
+# built under the Nix packaging system.
 #
 # As of 2017 Nix did not include simple GL setup, so this script
 # is a workaround.
@@ -71,6 +71,7 @@
 # See Also
 # https://github.com/NixOS/nixpkgs/issues/9415#issuecomment-170661702
 # https://anonscm.debian.org/git/pkg-xorg/lib/mesa.git/tree/docs/libGL.txt
+# https://anonscm.debian.org/git/pkg-xorg/lib/mesa.git/tree/src/loader/
 # https://github.com/deepfire/nix-install-vendor-gl
 # https://nixos.org/patchelf.html
 # https://en.wikipedia.org/wiki/Direct_Rendering_Manager
@@ -79,6 +80,7 @@
 # https://stackoverflow.com/questions/5103443/how-to-check-what-shared-libraries-are-loaded-at-run-time-for-a-given-process
 # sudo cat /proc/$Xserverprocessid/maps | grep dri
 # sudo lsof -p $Xserverprocessid | grep dri
+
 
 # glxinfo can hang, so we need to run it a special way
 run_glxinfo() {
