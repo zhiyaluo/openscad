@@ -80,41 +80,63 @@
 # sudo cat /proc/$Xserverprocessid/maps | grep dri
 # sudo lsof -p $Xserverprocessid | grep dri
 
-export DISPLAY=:0
+# glxinfo can hang, so we need to run it a special way
+run_glxinfo() {
+  prefix=$2" "$3
+  log=$1
+  $prefix glxinfo &> $log &
+  glxinfopid=$!
+  echo waiting
+  sleep 1
+  echo waiting
+  sleep 1
+  set +e
+  kill $glxinfopid
+  set -e
+}
 
-if [ ! $IN_NIX_SHELL ]; then
-  echo sorry, this needs to be run from within nix-shell environment. exiting.
-  exit
-fi
-if [ ! $1 ]; then
-  echo this script is usually run from openscad/scripts/nixshell-run.sh
-  echo if you are working on the build system, you can try running this
-  echo with first arg being dir containing modified DRI libs
-  exit
-fi
-if [ ! "`command -v glxinfo`" ]; then
-  echo sorry, this script, $0, needs glxinfo in your PATH. exiting.
-  exit
-fi
-glxinfo > /dev/null
-if [ ! $? -eq 0 ]; then
-  echo sorry, your glxinfo appears to be inoperable. please get
-  echo a working glxinfo. perhaps you have not an X11 server started?
-  exit
-fi
-if [ ! "`glxinfo | grep nix.store`" ]; then
-  echo sorry, this script, $0, needs system glxinfo in your PATH.
-  echo it appears your glxinfo is from Nix. please use a clean shell.
-  exit
-fi
-if [ ! "`command -v dirname`" ]; then
-  echo sorry, this script, $*, needs dirname. exiting.
-  exit
-fi
-if [ ! "`command -v ldd`" ]; then
-  echo sorry, this script, $*, needs ldd. exiting.
-  exit
-fi
+verify_deps() {
+  if [ ! $IN_NIX_SHELL ]; then
+    echo sorry, this needs to be run from within nix-shell environment. exiting.
+    exit
+  fi
+  if [ ! $1 ]; then
+    echo this script is usually run from openscad/scripts/nixshell-run.sh
+    echo if you are working on the build system, you can try running this
+    echo with first arg being dir containing modified DRI libs
+    exit
+  fi
+  if [ ! "`command -v glxinfo`" ]; then
+    echo sorry, this script, $0, needs glxinfo in your PATH. exiting.
+    exit
+  fi
+  if [ "`which glxinfo | grep nix.store`" ]; then
+    echo sorry, this script, $0, needs system glxinfo in your PATH. but
+    echo it appears your glxinfo is from Nix. please use a clean shell.
+    exit
+  fi
+  if [ ! -d $1 ]; then
+    mkdir -p $1
+  fi
+  run_glxinfo $1/testglxinfo.txt
+  if [ ! "`cat $1/testglxinfo.txt`" ]; then
+    echo glxinfo appears to be broken. please run under an X11 session
+    echo where glxinfo runs properly.
+    exit
+  fi
+  if [ ! "`command -v dirname`" ]; then
+    echo sorry, this script, $*, needs dirname. exiting.
+    exit
+  fi
+  if [ ! "`command -v ldd`" ]; then
+    echo sorry, this script, $*, needs ldd. exiting.
+    exit
+  fi
+  if [ ! "`command -v strace`" ]; then
+    echo sorry, this script, $*, needs strace. exiting.
+    exit
+  fi
+}
 
 find_system_libGL_DIR() {
   glxinfobin=`which glxinfo`
@@ -134,14 +156,13 @@ find_DRI_DIR() {
 
 find_driver_used_by_glxinfo() {
   #  glxinfo can hang.
-  logfile=$1/glxinfo.strace.txt
-  sttxt=`strace -f $glxinfobin &> $logfile & `
-  pidstrace=$!
-  sleep 1;
-  set +e
-  kill $pidstrace
-  set -e
-  sttxt=`cat $logfile`
+  run_glxinfo $1/glxinfo.strace.txt strace -f
+  sttxt=`cat $1/glxinfo.strace.txt`
+  if [ ! $sttxt ]; then
+    echo strace -f glxinfo appears to have failed to run properly. logfile empty.
+    echo please try running under an X environment where strace -f glxinfo works properly.
+    exit
+  fi
   driline=`echo $sttxt | grep open | grep dri | grep -v open..dev | grep -v NOENT`
   drifilepath=`echo $driline | sed s/\\"/\\ /g - | awk ' { print $2 } '`
   echo $drifilepath
@@ -195,8 +216,12 @@ install_under_specialdir() {
   patchelf --set-rpath $OSCD_NIXGL_DIR $target_path
 }
 
-set -x
 set -e
+set -x
+
+export DISPLAY=:0
+
+verify_deps $*
 
 SYSTEM_MESA_LIBGL_DIR=$(find_system_libGL_DIR)
 SYSTEM_DRI_DIR=$(find_DRI_DIR)
@@ -204,10 +229,9 @@ SYSTEM_SWRAST_DRIVERDIR=$(find_swrast_driverdir)
 #OSCD_NIXGL_DIR=/run/opengl-driver/lib/dri
 #OSCD_NIXGL_DIR=$PWD/__oscd_nix_gl__/dri
 OSCD_NIXGL_DIR=$1
-exit
 
 SYS_LIBGL_SO_FILE=$(find_regular_file_in_dir libGL.so $SYSTEM_MESA_LIBGL_DIR)
-SYS_DRI_SO_FILE=$(find_driver_used_by_glxinfo $OSCD_NIXGL_DIR)
+#SYS_DRI_SO_FILE=$(find_driver_used_by_glxinfo $OSCD_NIXGL_DIR)
 #echo install_under_specialdir $SYS_DRI_SO_FILE $OSCD_NIXGL_DIR
 echo driver_dep_libs=$(find_shlibs $SYS_DRI_SO_FILE)
 for filenm in $driver_dep_libs ; do
