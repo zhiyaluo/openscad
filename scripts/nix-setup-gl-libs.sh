@@ -4,69 +4,42 @@
 # As of 2017 Nix did not include simple GL setup, so this script
 # is a workaround.
 #
-# This works by creating a subdirectory under the present working directory,
-# named __oscd_nix_gl__, copies the system DRI driver files to this directory,
-# edits their rpath, and uses LIBGL_DRIVERS_DIR to direct Nix's libGL.so
-# to load these drivers.
+# To use: 
 #
-# The basic operation is as follows:
-# Nix has it's own version of Mesa libGL.so. Programs that use GL will
-# cause the dynamic-linker to load nix's libGL.so, which will in turn figure
-# out which video card is being used, then find a driver file for it,
-# and load it using dlopen() instead of the dynamic linker.
+#  don't. It is normally called from scripts/nixshell-run.sh
 #
-# These driver files are Direct Rendering Interface, or DRI, files,
-# On a non-nix system they are usually under some /lib directory 
-# with a 'dri' name, for example on ubuntu linux 16 they are here:
+# To test:
 #
-# don@serebryanya:~/src/openscad/binnix$ ls /usr/lib/x86_64-linux-gnu/dri/
-# dummy_drv_video.so  nouveau_dri.so        r600_dri.so       vdpau_drv_video.so
-# i915_dri.so         nouveau_vieux_dri.so  radeon_dri.so     virtio_gpu_dri.so
-# i965_dri.so         nvidia_drv_video.so   radeonsi_dri.so   vmwgfx_dri.so
-# i965_drv_video.so   r200_dri.so           s3g_drv_video.so
-# kms_swrast_dri.so   r300_dri.so           swrast_dri.so
+#  /openscad/bin$ IN_NIX_SHELL=1 ../scripts/nix-setup-gl-libs.sh ./testdir
 #
-# However, Nix's libGL.so is specially built to search for these dri files under
-# /run/opengl-driver/lib/dri . There are ways to override this, for example
-# some people use LD_LIBRARY_PATH, but the problem with that is it overrides
-# all libraries. Mesa's LibGL however has a special feature, it reads the
-# environment variable LIBGL_DRIVERS_DIR and will use this path to look
-# for the DRI drivers.
+# To test with software rendering:
 #
-# There is a catch. Those dri.so files in turn depend on other non-nix
-# system libraries as well. For example lets look at i965_dri.so on Ubuntu16
+#  /openscad/bin$ LIBGL_ALWAYS_SOFTWARE=1 IN_NIX_SHELL=1 ../scripts/nix-setup-gl-libs.sh ./testdir
 #
-# don@serebryanya:~/src/openscad/binnix$ ldd /usr/lib/x86_64-linux-gnu/dri/i965_dri.so 
-#  linux-vdso.so.1 =>  (0x00007fff20071000)
-#  libgcrypt.so.20 => /lib/x86_64-linux-gnu/libgcrypt.so.20 (0x00007fb55410c000)
-#  libdrm_intel.so.1 => /usr/lib/x86_64-linux-gnu/libdrm_intel.so.1 (0x00007fb553ee9000)
-#  libdrm_nouveau.so.2 => /usr/lib/x86_64-linux-gnu/libdrm_nouveau.so.2 (0x00007fb553ce0000)
-#  libdrm_radeon.so.1 => /usr/lib/x86_64-linux-gnu/libdrm_radeon.so.1 (0x00007fb553ad4000)
-#  libdrm.so.2 => /usr/lib/x86_64-linux-gnu/libdrm.so.2 (0x00007fb5538c3000)
-#  libexpat.so.1 => /lib/x86_64-linux-gnu/libexpat.so.1 (0x00007fb553699000)
-#  libpthread.so.0 => /lib/x86_64-linux-gnu/libpthread.so.0 (0x00007fb55347c000)
-#  libdl.so.2 => /lib/x86_64-linux-gnu/libdl.so.2 (0x00007fb553278000)
-#  libstdc++.so.6 => /usr/lib/x86_64-linux-gnu/libstdc++.so.6 (0x00007fb552ef5000)
-#  libm.so.6 => /lib/x86_64-linux-gnu/libm.so.6 (0x00007fb552bec000)
-#  libc.so.6 => /lib/x86_64-linux-gnu/libc.so.6 (0x00007fb552822000)
-#  libgcc_s.so.1 => /lib/x86_64-linux-gnu/libgcc_s.so.1 (0x00007fb55260b000)
-#  libgpg-error.so.0 => /lib/x86_64-linux-gnu/libgpg-error.so.0 (0x00007fb5523f7000)
-#  libpciaccess.so.0 => /usr/lib/x86_64-linux-gnu/libpciaccess.so.0 (0x00007fb5521ed000)
-#  /lib64/ld-linux-x86-64.so.2 (0x00005566de529000)
-#  libz.so.1 => /lib/x86_64-linux-gnu/libz.so.1 (0x00007fb551fd2000)
+# Theory:
 #
-# Now we could use Nix supplied .so files instead of these system .so files,
-# but there is no guarantee they will be compatible. How to deal with this?
+# The main thing we need is for Nix's libGL.so to call our system proper
+# DRI graphics driver. Distros typically ship with opensource drivers
+# created by the Mesa project, with names like i965_dri.so,
+# radeon_dri.so, etc, usually deep under /usr/lib or /lib.
 #
-# The answer is within the linking system and binary executable
-# format used on linux, called ELF (Executable Linkable Format). The key
-# is a feature of ELF called rpath.
+# To determine the proper DRI driver without root access is
+# extraordinarily complex, so we use Mesa to find it for us, by running
+# strace -f on glxinfo and looking at which driver it ran open() on.
 #
-# (to be continued)
+# Then we copy the driver, and all dependency .so files, to a subdir, called
+# __oscd_nix_gl__. We patchelf the rpath of all these dependencies to point to
+# this same subdir, so they dont need LD_LIBRARY_PATH to find their deps
+# at runtime.
 #
-# There is another huge catch. We don't want to copy all the driver files.
-# The less dependencies, the better. What do we do? We find out which
-# is being used, and we copy only what we need.
+# Lastly, we take advantage of libGL.so feature called LIBGL_DRIVERS_DIR
+# so that we can tell Nix's version of libGL.so where to find the special
+# copy of the DRI driver we just created.
+#
+# Now since Nix's libGL.so will load our special copy of the DRI driver,
+# which will in turn load the special copies of its dependency libraries
+# from it's rpath, our __oscd_nix_gl__ dir, without interfering with Nix.
+# In theory
 #
 # See Also
 # https://github.com/NixOS/nixpkgs/issues/9415#issuecomment-170661702
@@ -88,24 +61,22 @@ run_glxinfo() {
   log=$1
   $prefix glxinfo &> $log &
   glxinfopid=$!
-  echo waiting
   sleep 1
-  echo waiting
   sleep 1
   set +e
   kill $glxinfopid
   set -e
 }
 
-verify_deps() {
+verify_script_deps() {
   if [ ! $IN_NIX_SHELL ]; then
     echo sorry, this needs to be run from within nix-shell environment. exiting.
     exit
   fi
   if [ ! $1 ]; then
     echo this script is usually run from openscad/scripts/nixshell-run.sh
-    echo if you are working on the build system, you can try running this
-    echo with first arg being dir containing modified DRI libs
+    echo if you are working on this script itself, run like so:
+    echo IN_NIX_SHELL=1 $0 /tmp/nixsetupgl
     exit
   fi
   if [ ! "`command -v glxinfo`" ]; then
@@ -120,8 +91,12 @@ verify_deps() {
   if [ ! -d $1 ]; then
     mkdir -p $1
   fi
-  run_glxinfo $1/testglxinfo.txt
-  if [ ! "`cat $1/testglxinfo.txt`" ]; then
+  testlog=$1/testglxinfo.txt
+  if [ -e $testlog ]; then
+    rm $testlog
+  fi
+  run_glxinfo $testlog
+  if [ ! "`cat $testlog`" ]; then
     echo glxinfo appears to be broken. please run under an X11 session
     echo where glxinfo runs properly.
     exit
@@ -140,57 +115,17 @@ verify_deps() {
   fi
 }
 
-find_system_libGL_DIR() {
-  glxinfobin=`which glxinfo`
-  libglfile=`ldd $glxinfobin | grep libGL.so | awk ' { print $3 } '`
-  libGL_DIR=`dirname $libglfile`
-  echo $libGL_DIR
-}
-
-find_DRI_DIR() {
-  sysGL_DIR=$(find_system_libGL_DIR)
-  sysGL_DIR_parent=$sysGL_DIR/..
-  i965_drifile=`find $sysGL_DIR_parent | grep i965_dri.so | head -1`
-  i965dir=`dirname $i965_drifile`
-  i965_canonical_dir=`readlink -f $i965dir`
-  echo $i965_canonical_dir
-}
-
 find_driver_used_by_glxinfo() {
   #  glxinfo can hang.
-  run_glxinfo $1/glxinfo.strace.txt strace -f
-  sttxt=`cat $1/glxinfo.strace.txt`
-  if [ ! $sttxt ]; then
+  run_glxinfo $1/strace.glxinfo.txt strace -f
+  if [ ! "`cat $1/strace.glxinfo.txt | head -1 | awk ' { print $1 } '`" ]; then
     echo strace -f glxinfo appears to have failed to run properly. logfile empty.
     echo please try running under an X environment where strace -f glxinfo works properly.
     exit
   fi
-  driline=`echo $sttxt | grep open | grep dri | grep -v open..dev | grep -v NOENT`
-  drifilepath=`echo $driline | sed s/\\"/\\ /g - | awk ' { print $2 } '`
+  drilines1=`cat $1/strace.glxinfo.txt | grep open | grep -v NOENT | grep dri.*.so\"`
+  drifilepath=`echo $drilines1 | sed s/\\"/\\ /g - | awk ' { print $2 } '`
   echo $drifilepath
-}
-
-find_swrast_driverdir() {
-  sysGL_DIR=$(find_system_libGL_DIR)
-  sysGL_DIR_parent=$sysGL_DIR/..
-  swrast_drifile=`find $sysGL_DIR_parent | grep swrast_dri.so | head -1`
-  swrastdir=`dirname $swrast_drifile`
-  swrast_canonical_dir=`readlink -f $swrastdir`
-  echo $swrast_canonical_dir
-}
-
-find_regular_file_in_dir() {
-  filepattern_wanted=$1
-  dir_name=$2
-  result=''
-  for filename in $dir_name/*; do
-    if [ -f $filename ]; then
-      if [ "`echo $filename | grep $filepattern_wanted`" ]; then
-        result=$filename
-      fi
-    fi
-  done
-  echo $result
 }
 
 find_nixstore_dir_for() {
@@ -202,42 +137,75 @@ find_nixstore_dir_for() {
 
 find_shlibs() {
   find_shlib=$1
-  shlibs=`ldd $find_shlib | grep "=>" | grep -v "vdso.so" | awk ' { print $1 } ' `
+  shlibs=`ldd $find_shlib | grep "=>" | grep -v "vdso.so" | awk ' { print $3 } ' `
   echo $shlibs
 }
 
 install_under_specialdir() {
   original_path=$1
   target_dir=$2
-  target_path=$target_dir
-  #`basename $original_path`
+  target_fname=`basename $original_path`
+  target_path=$target_dir/$target_fname
   if [ ! -d $target_dir ]; then
     mkdir -p $target_dir
   fi
-  cp -v $original_path $target_path
-  patchelf --set-rpath $OSCD_NIXGL_DIR $target_path
+
+  original_deref_path=`readlink -f $original_path`
+  target_deref_fname=`basename $original_deref_path`
+  target_deref_path=$target_dir/$target_deref_fname
+  if [ -L $original_path ]; then
+    ln -s $target_deref_path $target_path
+    cp -v $original_path $target_deref_path
+  else
+    cp -v $original_path $target_path
+  fi
+
+  patchelf --set-rpath $OSCD_NIXGL_DIR $target_deref_path
 }
 
 set -e
 set -x
 
-export DISPLAY=:0
+# export DISPLAY=:0 # for testing obscure systems
 
-verify_deps $*
+#OSCD_NIXGL_DIR=/run/opengl-driver/lib/dri # Nix's version of the world
+#OSCD_NIXGL_DIR=$PWD/__oscd_nix_gl__/dri   # as called by nixshell-run.sh
+OSCD_NIXGL_DIR=`readlink -f $1`
+if [ -d $OSCD_NIXGL_DIR ]; then
+  # prevent disasters
+  if [ "`echo $OSCD_NIXGL_DIR| grep $PWD`" ]; then
+    rm -f $OSCD_NIXGL_DIR/*
+    rmdir $OSCD_NIXGL_DIR
+  else
+    echo please use an openscad_nixgl_dir under present directory $PWD
+    exit
+  fi
+fi
 
-SYSTEM_MESA_LIBGL_DIR=$(find_system_libGL_DIR)
-SYSTEM_DRI_DIR=$(find_DRI_DIR)
-SYSTEM_SWRAST_DRIVERDIR=$(find_swrast_driverdir)
-#OSCD_NIXGL_DIR=/run/opengl-driver/lib/dri
-#OSCD_NIXGL_DIR=$PWD/__oscd_nix_gl__/dri
-OSCD_NIXGL_DIR=$1
+verify_script_deps $*
 
-SYS_LIBGL_SO_FILE=$(find_regular_file_in_dir libGL.so $SYSTEM_MESA_LIBGL_DIR)
-#SYS_DRI_SO_FILE=$(find_driver_used_by_glxinfo $OSCD_NIXGL_DIR)
-#echo install_under_specialdir $SYS_DRI_SO_FILE $OSCD_NIXGL_DIR
-echo driver_dep_libs=$(find_shlibs $SYS_DRI_SO_FILE)
+
+SYS_DRI_SO_FILE=$(find_driver_used_by_glxinfo $OSCD_NIXGL_DIR)
+install_under_specialdir $SYS_DRI_SO_FILE $OSCD_NIXGL_DIR
+driverlist=$1/driver_deplist.txt
+if [ -e $driverlist ]; then rm $driverlist; fi
+driver_dep_libs=$(find_shlibs $SYS_DRI_SO_FILE)
+driver_dir=`dirname $SYS_DRI_SO_FILE`
 for filenm in $driver_dep_libs ; do
-  echo $filenm
+  if [ ! "`grep $filenm $driverlist`" ]; then
+    echo $filenm >> $driverlist
+  fi
+  fullfilenm=`readlink -f $filenm`
+  tmp=$(find_shlibs $fullfilenm )
+  for filenm2 in $tmp; do
+    if [ ! "`grep $filenm2 $driverlist`" ]; then
+      echo $filenm2 >> $driverlist
+    fi
+  done
+done
+
+for driver_deplib in `cat $driverlist | sort` ; do
+  install_under_specialdir $driver_deplib $OSCD_NIXGL_DIR
 done
 
 set +x
