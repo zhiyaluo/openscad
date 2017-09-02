@@ -167,7 +167,10 @@ install_under_specialdir() {
     cp -v $original_path $target_path
   fi
 
-  patchelf --set-rpath $OSCD_NIXGL_DIR $target_deref_path
+  permissions=`stat -c%a $target_deref_path`
+  chmod u+w $target_deref_path
+  patchelf --force --set-rpath $OSCD_NIXGL_DIR $target_deref_path
+  chmod $permissions $target_deref_path
 }
 
 set -e
