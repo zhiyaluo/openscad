@@ -10,7 +10,7 @@
 #
 # To test:
 #
-#  /openscad/bin$ IN_NIX_SHELL=1 ../scripts/nix-setup-gl-libs.sh ./testdir
+#  /openscad/bin$ IN_NIX_SHELL=1 ../scripts/nix-setup-gl-libs.sh ./testgldir
 #
 # To test with software rendering:
 #
@@ -25,7 +25,7 @@
 #
 # To determine the proper DRI driver without root access is
 # extraordinarily complex, so we use Mesa to find it for us, by running
-# strace -f on glxinfo and looking at which driver it ran open() on.
+# LIBGL_DEBUG=verbose glxinfo and looking at which driver it ran open() on.
 #
 # Then we copy the driver, and all it's dependency .so files, to a
 # subdir, called __oscd_nix_gl__. We patchelf the rpath of this copy of
@@ -117,22 +117,22 @@ verify_script_deps() {
     echo sorry, this script, $*, needs ldd. exiting.
     exit
   fi
-  if [ ! "`command -v strace`" ]; then
-    echo sorry, this script, $*, needs strace. exiting.
-    exit
-  fi
 }
 
 find_driver_used_by_glxinfo() {
   #  glxinfo can hang.
-  run_glxinfo $1/strace.glxinfo.txt strace -f
-  if [ ! "`cat $1/strace.glxinfo.txt | head -1 | awk ' { print $1 } '`" ]; then
-    echo strace -f glxinfo appears to have failed to run properly. logfile empty.
-    echo please try running under an X environment where strace -f glxinfo works properly.
+  save_libgldebug=$LIBGL_DEBUG
+  LIBGL_DEBUG=verbose
+  export LIBGL_DEBUG
+  run_glxinfo $1/libgl_debug.glxinfo.txt
+  LIBGL_DEBUG=$save_libgldebug
+  if [ ! "`cat $1/libgl_debug.glxinfo.txt | head -1 | awk ' { print $1 } '`" ]; then
+    echo glxinfo appears to have failed to run properly. logfile empty.
+    echo please try running under an X environment where glxinfo works properly.
     exit
   fi
-  drilines1=`cat $1/strace.glxinfo.txt | grep open | grep -v NOENT | grep dri.*.so\"`
-  drifilepath=`echo $drilines1 | sed s/\\"/\\ /g - | awk ' { print $2 } '`
+  drilines1=`cat $1/libgl_debug.glxinfo.txt | grep -i ^libGL.*opendriver | tail -1`
+  drifilepath=`echo $drilines1 | awk ' { print $4 } '`
   echo $drifilepath
 }
 
@@ -203,16 +203,7 @@ if [ -e $driverlist ]; then rm $driverlist; fi
 driver_dep_libs=$(find_shlibs $SYS_DRI_SO_FILE)
 driver_dir=`dirname $SYS_DRI_SO_FILE`
 for filenm in $driver_dep_libs ; do
-  if [ ! "`grep $filenm $driverlist`" ]; then
-    echo $filenm >> $driverlist
-  fi
-  fullfilenm=`readlink -f $filenm`
-  tmp=$(find_shlibs $fullfilenm )
-  for filenm2 in $tmp; do
-    if [ ! "`grep $filenm2 $driverlist`" ]; then
-      echo $filenm2 >> $driverlist
-    fi
-  done
+  echo $filenm >> $driverlist
 done
 
 for driver_deplib in `cat $driverlist | sort` ; do
