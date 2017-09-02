@@ -56,6 +56,7 @@
 # sudo cat /proc/$Xserverprocessid/maps | grep dri
 # sudo lsof -p $Xserverprocessid | grep dri
 # https://superuser.com/questions/1144758/overwrite-default-lib64-ld-linux-x86-64-so-2-to-call-executables
+# https://stackoverflow.com/a/3450447
 
 # glxinfo can hang, so we need to run it a special way
 run_glxinfo() {
@@ -169,7 +170,7 @@ install_under_specialdir() {
 
   permissions=`stat -c%a $target_deref_path`
   chmod u+w $target_deref_path
-  patchelf --force --set-rpath $OSCD_NIXGL_DIR $target_deref_path
+  patchelf --set-rpath $OSCD_NIXGL_DIR $target_deref_path
   chmod $permissions $target_deref_path
 }
 
