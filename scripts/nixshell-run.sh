@@ -7,7 +7,7 @@
 #  nix-env -qaP | grep scintilla
 # -The 'nix package' will be on the left, the package details on the right.
 
-echo nix shell starting, please wait...
+echo Nix shell starting, please wait...
 
 if [ $IN_NIX_SHELL ]; then
   echo already running inside nix-shell, please exit before running
