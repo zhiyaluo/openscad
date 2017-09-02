@@ -1,5 +1,5 @@
-# This script enables use of OpenGL(TM) drivers when OpenSCAD is built
-# under the Nix packaging system.
+# This is a helper script for using OpenGL(TM) drivers when OpenSCAD is
+# built under the Nix packaging system.
 #
 # As of 2017 Nix did not include simple GL setup, so this script
 # is a workaround.
@@ -27,10 +27,10 @@
 # extraordinarily complex, so we use Mesa to find it for us, by running
 # LIBGL_DEBUG=verbose glxinfo and looking at which driver it ran open() on.
 #
-# Then we copy the driver, and all dependency .so files, to a subdir, called
-# __oscd_nix_gl__. We patchelf the rpath of all these dependencies to point to
-# this same subdir, so they dont need LD_LIBRARY_PATH to find their deps
-# at runtime.
+# Then we copy the driver, and all it's dependency .so files, to a
+# subdir, called __oscd_nix_gl__. We patchelf the rpath of this copy of
+# the driver, and the copies of its dependencies, to point to this same
+# subdir, so they dont need LD_LIBRARY_PATH to find their deps at runtime.
 #
 # Lastly, we take advantage of libGL.so feature called LIBGL_DRIVERS_DIR
 # so that we can tell Nix's version of libGL.so where to find the special
@@ -38,12 +38,15 @@
 #
 # Now since Nix's libGL.so will load our special copy of the DRI driver,
 # which will in turn load the special copies of its dependency libraries
-# from it's rpath, our __oscd_nix_gl__ dir, without interfering with Nix.
+# from it's rpath, which is our __oscd_nix_gl__ dir. Therefore it wont
+# interefer with Nix.
+#
 # In theory
 #
 # See Also
 # https://github.com/NixOS/nixpkgs/issues/9415#issuecomment-170661702
 # https://anonscm.debian.org/git/pkg-xorg/lib/mesa.git/tree/docs/libGL.txt
+# https://anonscm.debian.org/git/pkg-xorg/lib/mesa.git/tree/src/loader/
 # https://github.com/deepfire/nix-install-vendor-gl
 # https://nixos.org/patchelf.html
 # https://en.wikipedia.org/wiki/Direct_Rendering_Manager
@@ -52,7 +55,7 @@
 # https://stackoverflow.com/questions/5103443/how-to-check-what-shared-libraries-are-loaded-at-run-time-for-a-given-process
 # sudo cat /proc/$Xserverprocessid/maps | grep dri
 # sudo lsof -p $Xserverprocessid | grep dri
-
+# https://superuser.com/questions/1144758/overwrite-default-lib64-ld-linux-x86-64-so-2-to-call-executables
 
 # glxinfo can hang, so we need to run it a special way
 run_glxinfo() {
@@ -97,6 +100,11 @@ verify_script_deps() {
   run_glxinfo $testlog
   if [ ! "`cat $testlog`" ]; then
     echo glxinfo appears to be broken. please run under an X11 session
+    echo where glxinfo runs properly.
+    exit
+  fi
+  if [ "`cat $testlog | head -1 | grep -i error`" ]; then
+    echo glxinfo gave an error. please run under an X11 session
     echo where glxinfo runs properly.
     exit
   fi
