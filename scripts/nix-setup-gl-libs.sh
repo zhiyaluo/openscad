@@ -56,6 +56,7 @@
 # sudo cat /proc/$Xserverprocessid/maps | grep dri
 # sudo lsof -p $Xserverprocessid | grep dri
 # https://superuser.com/questions/1144758/overwrite-default-lib64-ld-linux-x86-64-so-2-to-call-executables
+# https://stackoverflow.com/a/3450447
 
 # glxinfo can hang, so we need to run it a special way
 run_glxinfo() {
@@ -144,7 +145,10 @@ find_nixstore_dir_for() {
 
 find_shlibs() {
   find_shlib=$1
+  saved_permissions=`stat -c%a $find_shlib`
+  chmod u+x $find_shlib
   shlibs=`ldd $find_shlib | grep "=>" | grep -v "vdso.so" | awk ' { print $3 } ' `
+  chmod $saved_permissions $find_shlib
   echo $shlibs
 }
 
@@ -167,7 +171,10 @@ install_under_specialdir() {
     cp -v $original_path $target_path
   fi
 
+  saved_permissions=`stat -c%a $target_deref_path`
+  chmod u+w $target_deref_path
   patchelf --set-rpath $OSCD_NIXGL_DIR $target_deref_path
+  chmod $saved_permissions $target_deref_path
 }
 
 set -e

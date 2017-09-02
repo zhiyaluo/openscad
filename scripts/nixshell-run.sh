@@ -38,9 +38,9 @@ nix-shell -p pkgconfig gcc gnumake \
    opencsg cgal gmp mpfr eigen \
    boost flex bison gettext \
    glib libxml2 libzip harfbuzz freetype fontconfig \
-   glew xorg.libX11 xorg_sys_opengl \
+   glew xorg.libX11 xorg_sys_opengl mesa \
    qt5.full qt5.qtbase libsForQt5.qscintilla \
-   llvm \
+   llvm patchelf \
    --command "$glsetup $DRI_DIR;export LIBGL_DRIVERS_DIR=$DRI_DIR;return"
 #   qt48Full qscintilla
 
