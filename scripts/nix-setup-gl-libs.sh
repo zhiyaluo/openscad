@@ -66,8 +66,8 @@
 # glxinfo can hang, so we need to run it a special way
 run_glxinfo() {
   prefix=$2" "$3
-  log=$1
-  $prefix glxinfo &> $log &
+  logfile=$1
+  $prefix glxinfo &> $logfile &
   glxinfopid=$!
   sleep 1
   sleep 1
@@ -99,21 +99,6 @@ verify_script_deps() {
   if [ ! -d $1 ]; then
     mkdir -p $1
   fi
-  testlog=$1/oscd-glxinfo-test.txt
-  if [ -e $testlog ]; then
-    rm $testlog
-  fi
-  run_glxinfo $testlog
-  if [ ! "`cat $testlog`" ]; then
-    echo glxinfo appears to be broken. please run under an X11 session
-    echo where glxinfo runs properly.
-    exit
-  fi
-  if [ "`cat $testlog | head -1 | grep -i error`" ]; then
-    echo glxinfo gave an error. please run under an X11 session
-    echo where glxinfo runs properly.
-    exit
-  fi
   if [ ! "`command -v dirname`" ]; then
     echo sorry, this script, $*, needs dirname. exiting.
     exit
@@ -128,15 +113,30 @@ find_driver_used_by_glxinfo() {
   # this attempts to parse the last line of glxinfo OpenDriver search output.
   # example for system using Intel(tm) 3d graphics chip:
   # libGL: OpenDriver: trying /usr/lib/x86_64-linux-gnu/dri/i965_dri.so
+
   save_libgldebug=$LIBGL_DEBUG
   LIBGL_DEBUG=verbose
   export LIBGL_DEBUG
-  logfile=$1/oscd-glxinfo-debug.txt
-  run_glxinfo $logfile
+  glxinfo_debug_log=$1/oscd-glxinfo-debug.txt
+  if [ -e $glxinfo_debug_log ]; then
+    rm $glxinfo_debug_log
+  fi
+  run_glxinfo $glxinfo_debug_log
   LIBGL_DEBUG=$save_libgldebug
-  if [ ! "`cat $logfile | head -1 | awk ' { print $1 } '`" ]; then
-    echo glxinfo appears to have failed to run properly. logfile empty.
+
+  if [ ! -e $glxinfo_debug_log ]; then
+    echo glxinfo produced no logfile. please run under an X11 session
+    echo where glxinfo runs properly.
+    exit
+  fi
+  if [ ! "`cat $glxinfo_debug_log | head -1 | awk ' { print $1 } '`" ]; then
+    echo glxinfo log was empty.
     echo please try running under an X environment where glxinfo works properly.
+    exit
+  fi
+  if [ "`cat $glxinfo_debug_log | head -1 | grep -i error`" ]; then
+    echo glxinfo gave an error. please run under an X11 session
+    echo where glxinfo runs properly.
     exit
   fi
   drilines1=`cat $logfile | grep -i ^libGL.*opendriver | tail -1`
@@ -204,12 +204,14 @@ fi
 
 verify_script_deps $*
 
+gllog=$OSCD_NIXGL_DIR/oscd-gl-setup-info.txt
+
 SYS_DRI_SO_FILEPATH=$(find_driver_used_by_glxinfo $OSCD_NIXGL_DIR)
 install_under_specialdir $SYS_DRI_SO_FILEPATH $OSCD_NIXGL_DIR
-driverlist=$1/oscd-gldriver-deplist.txt
-if [ -e $driverlist ]; then rm $driverlist; fi
 NEW_DRI_SO_FILEPATH=$OSCD_NIXGL_DIR/`basename $SYS_DRI_SO_FILEPATH`
+
 driver_dep_libs=$(find_shlibs $NEW_DRI_SO_FILEPATH $OSCD_NIXGL_DIR)
+driverlist=$1/oscd-gldriver-deplist.txt
 for filenm in $driver_dep_libs ; do
   echo $filenm >> $driverlist
 done
@@ -218,6 +220,16 @@ for driver_deplib in `cat $driverlist | sort` ; do
   install_under_specialdir $driver_deplib $OSCD_NIXGL_DIR
 done
 
+echo "DRI driver "$SYS_DRI_SO_FILEPATH   > $gllog
+echo "moved to   "$NEW_DRI_SO_FILEPATH  >> $gllog
+echo "glxinfo    "`which glxinfo`       >> $gllog
+echo "ldd        "$LDD_FULLEXEC         >> $gllog
+echo "rpaths of .so in $OSCD_NIXGL_DIR" >> $gllog
+for file in $OSCD_NIXGL_DIR/*so*; do
+  if [ ! -L $file ]; then
+    echo " "`basename $file` `patchelf --print-rpath $file` >> $gllog
+  fi
+done
 set +x
 set +e
 

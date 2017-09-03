@@ -40,7 +40,7 @@ thisscript=$0
 scriptdir=`dirname $0`
 glsetup=$scriptdir/nix-setup-gl-libs.sh
 DRI_DIR=$PWD/__oscd_nix_gl__
-LDD_PATH=`which ldd`
+LDD_EXEC=`which ldd`
 
 # this will auto-install nix packages, several gigabytes worth!
 nix-shell -p pkgconfig gcc gnumake \
@@ -50,10 +50,11 @@ nix-shell -p pkgconfig gcc gnumake \
    glew xorg.libX11 xorg_sys_opengl mesa \
    qt5.full qt5.qtbase libsForQt5.qscintilla \
    llvm patchelf \
-   --command "$glsetup $DRI_DIR $LDD_PATH;export LIBGL_DRIVERS_DIR=$DRI_DIR;return"
+   --command "$glsetup $DRI_DIR $LDD_EXEC; export LIBGL_DRIVERS_DIR=$DRI_DIR; return"
 
 # $glsetup = the script to set up special GL libraries, see nix-setup-gl-libs.sh
 # DRI_DIR = location where we will keep our custom patchelf-rpath GL DRI drivers
-# LDD_PATH = system's ldd, we need this to find the system DRI driver + deps
-# LIBGL_DRIVERS = special environment variable for MESA, points to our DRI drivers
-
+# LDD_EXEC = system's ldd, we need this to find the system DRI driver + deps
+# LIBGL_DRIVERS_DIR = special environment variable for MESA, points to our DRI drivers
+# Note that LIBGL_DRIVERS_DIR needs to be set after calling $glsetup,
+# because if you call it before, glsetup's glxinfo cant find system drivers
