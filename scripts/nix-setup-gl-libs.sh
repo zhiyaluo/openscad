@@ -8,7 +8,8 @@
 #
 #  don't. It is normally called from scripts/nixshell-run.sh
 #
-# To test:
+# To test: (Keep in mind things like ldd, patchelf, differ when testing)
+#          (Because nix has its own version of many of these items)
 #
 #  /openscad/bin$ IN_NIX_SHELL=1 ../scripts/nix-setup-gl-libs.sh ./testgldir
 #
@@ -45,6 +46,10 @@
 #
 # See Also
 # https://github.com/NixOS/nixpkgs/issues/9415#issuecomment-170661702
+# https://grahamwideman.wordpress.com/2009/02/09/the-linux-loader-and-how-it-finds-libraries/
+# http://www.airs.com/blog/archives/38
+# http://www.airs.com/blog/archives/39
+# http://www.airs.com/blog/archives/ (up to 50)
 # https://anonscm.debian.org/git/pkg-xorg/lib/mesa.git/tree/docs/libGL.txt
 # https://anonscm.debian.org/git/pkg-xorg/lib/mesa.git/tree/src/loader/
 # https://github.com/deepfire/nix-install-vendor-gl
@@ -94,7 +99,7 @@ verify_script_deps() {
   if [ ! -d $1 ]; then
     mkdir -p $1
   fi
-  testlog=$1/testglxinfo.txt
+  testlog=$1/oscd-glxinfo-test.txt
   if [ -e $testlog ]; then
     rm $testlog
   fi
@@ -113,41 +118,40 @@ verify_script_deps() {
     echo sorry, this script, $*, needs dirname. exiting.
     exit
   fi
-  if [ ! "`command -v ldd`" ]; then
+  if [ ! "`command -v $LDD_FULLEXEC`" ]; then
     echo sorry, this script, $*, needs ldd. exiting.
     exit
   fi
 }
 
 find_driver_used_by_glxinfo() {
-  #  glxinfo can hang.
+  # this attempts to parse the last line of glxinfo OpenDriver search output.
+  # example for system using Intel(tm) 3d graphics chip:
+  # libGL: OpenDriver: trying /usr/lib/x86_64-linux-gnu/dri/i965_dri.so
   save_libgldebug=$LIBGL_DEBUG
   LIBGL_DEBUG=verbose
   export LIBGL_DEBUG
-  run_glxinfo $1/libgl_debug.glxinfo.txt
+  logfile=$1/oscd-glxinfo-debug.txt
+  run_glxinfo $logfile
   LIBGL_DEBUG=$save_libgldebug
-  if [ ! "`cat $1/libgl_debug.glxinfo.txt | head -1 | awk ' { print $1 } '`" ]; then
+  if [ ! "`cat $logfile | head -1 | awk ' { print $1 } '`" ]; then
     echo glxinfo appears to have failed to run properly. logfile empty.
     echo please try running under an X environment where glxinfo works properly.
     exit
   fi
-  drilines1=`cat $1/libgl_debug.glxinfo.txt | grep -i ^libGL.*opendriver | tail -1`
+  drilines1=`cat $logfile | grep -i ^libGL.*opendriver | tail -1`
   drifilepath=`echo $drilines1 | awk ' { print $4 } '`
   echo $drifilepath
 }
 
-find_nixstore_dir_for() {
-  filepattern=$1
-  filename=`find /nix/store | grep $filepattern | tail -1`
-  filename_parentdir=`dirname $filename`
-  echo $filename_parentdir
-}
-
 find_shlibs() {
   find_shlib=$1
+  ldd_logfile=$2/oscd-ldd-log.txt
   saved_permissions=`stat -c%a $find_shlib`
   chmod u+x $find_shlib
-  shlibs=`ldd $find_shlib | grep "=>" | grep -v "vdso.so" | awk ' { print $3 } ' `
+  echo $LDD_FULLEXEC > $ldd_logfile
+  $LDD_FULLEXEC $find_shlib >> $ldd_logfile
+  shlibs=`cat $ldd_logfile | grep "=>" | grep -v "vdso.so" | awk ' { print $3 } ' `
   chmod $saved_permissions $find_shlib
   echo $shlibs
 }
@@ -185,6 +189,8 @@ set -x
 #OSCD_NIXGL_DIR=/run/opengl-driver/lib/dri # Nix's version of the world
 #OSCD_NIXGL_DIR=$PWD/__oscd_nix_gl__/dri   # as called by nixshell-run.sh
 OSCD_NIXGL_DIR=`readlink -f $1`
+LDD_FULLEXEC=`readlink -f $2`
+
 if [ -d $OSCD_NIXGL_DIR ]; then
   # prevent disasters
   if [ "`echo $OSCD_NIXGL_DIR| grep $PWD`" ]; then
@@ -198,13 +204,12 @@ fi
 
 verify_script_deps $*
 
-
-SYS_DRI_SO_FILE=$(find_driver_used_by_glxinfo $OSCD_NIXGL_DIR)
-install_under_specialdir $SYS_DRI_SO_FILE $OSCD_NIXGL_DIR
-driverlist=$1/driver_deplist.txt
+SYS_DRI_SO_FILEPATH=$(find_driver_used_by_glxinfo $OSCD_NIXGL_DIR)
+install_under_specialdir $SYS_DRI_SO_FILEPATH $OSCD_NIXGL_DIR
+driverlist=$1/oscd-gldriver-deplist.txt
 if [ -e $driverlist ]; then rm $driverlist; fi
-driver_dep_libs=$(find_shlibs $SYS_DRI_SO_FILE)
-driver_dir=`dirname $SYS_DRI_SO_FILE`
+NEW_DRI_SO_FILEPATH=$OSCD_NIXGL_DIR/`basename $SYS_DRI_SO_FILEPATH`
+driver_dep_libs=$(find_shlibs $NEW_DRI_SO_FILEPATH $OSCD_NIXGL_DIR)
 for filenm in $driver_dep_libs ; do
   echo $filenm >> $driverlist
 done
