@@ -153,9 +153,15 @@ find_shlibs() {
   chmod u+x $find_shlib
   echo $LDD_FULLEXEC > $ldd_logfile
   $LDD_FULLEXEC $find_shlib >> $ldd_logfile
-  shlibs=`cat $ldd_logfile | grep "=>" | grep -v "vdso.so" | awk ' { print $3 } ' `
+  shlibs=`cat $ldd_logfile | grep "=>" | awk ' { print $3 } ' `
   chmod $saved_permissions $find_shlib
-  echo $shlibs
+  fs_result=
+  for filenm in `echo $shlibs`; do
+    if [ -e $filenm ]; then
+      fs_result=$fs_result" "$filenm
+    fi
+  done
+  echo $fs_result
 }
 
 install_under_specialdir() {
