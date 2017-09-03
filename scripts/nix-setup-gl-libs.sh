@@ -108,8 +108,8 @@ verify_script_deps() {
 }
 
 find_driver_used_by_glxinfo() {
-  # this attempts to parse the last line of glxinfo OpenDriver search output.
-  # example for system using Intel(tm) 3d graphics chip:
+  # this attempts to parse debug output of glxinfo to find DRI driver
+  # example for Ubuntu 16 linux system using Intel(tm) 3d graphics chip:
   # libGL: OpenDriver: trying /usr/lib/x86_64-linux-gnu/dri/i965_dri.so
 
   save_libgldebug=$LIBGL_DEBUG
