@@ -1,8 +1,5 @@
 # This is a helper script for using OpenGL(TM) drivers when OpenSCAD is
-# built under the Nix packaging system.
-#
-# As of 2017 Nix did not include simple GL setup, so this script
-# is a workaround.
+# built under the Nix packaging system, as Nix does not currently do this(2017)
 #
 # To use:
 #
@@ -21,15 +18,15 @@
 #
 # We need OpenSCAD to build against Nix, but Nix doesn't come with DRI
 # GL graphics drivers. There is no simple way to tell Nixs libGL.so how
-# to load these drivers, since Nix uses a specially modified program
-# linker and dynamic object loader (ld-linux.so) than the system itself.
-# The DRI files depend on many .so libraries that Nix's loader cannot easily
-# find or work with.
+# to load these drivers, since Nix uses a specially modified linker and
+# dynamic object loader (ld, ld-linux.so) that are different than what
+# the operating system itself uses. The DRI files depend on many .so
+# libraries that Nix's loader cannot easily find or work with.
 #
 # Therefore, we find the DRI drivers ourselves, copy them to a subfolder,
 # find their dependency .so files, copy them as well to the same subfolder,
 # patchelf all their rpaths, and tell Nix libGL to use our special copies.
-# Then Nix libGL.so will dlopen() our special copies of the drivers,
+# Then Nix libGL.so will dlopen() our copies of the drivers,
 # and hopefully their dependencies wont conflict with Nix's.
 #
 # See Also
