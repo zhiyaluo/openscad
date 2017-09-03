@@ -6,43 +6,31 @@
 #
 # To use:
 #
-#  don't. It is normally called from scripts/nixshell-run.sh
+#  Don't. This script is normally called from scripts/nixshell-run.sh
 #
 # To test: (Keep in mind things like ldd, patchelf, differ when testing)
 #          (Because nix has its own version of many of these items)
 #
-#  /openscad/bin$ IN_NIX_SHELL=1 ../scripts/nix-setup-gl-libs.sh ./testgldir
+#  /openscad/bin$ IN_NIX_SHELL=1 ../scripts/nix-setup-gl-libs.sh ./testgldir /usr/bin/ldd
 #
 # To test with software rendering:
 #
-#  /openscad/bin$ LIBGL_ALWAYS_SOFTWARE=1 IN_NIX_SHELL=1 ../scripts/nix-setup-gl-libs.sh ./testdir
+#  /openscad/bin$ LIBGL_ALWAYS_SOFTWARE=1 IN_NIX_SHELL=1 ../scripts/nix-setup-gl-libs.sh ./testdir /usr/bin/ldd
 #
 # Theory:
 #
-# The main thing we need is for Nix's libGL.so to call our system proper
-# DRI graphics driver. Distros typically ship with opensource drivers
-# created by the Mesa project, with names like i965_dri.so,
-# radeon_dri.so, etc, usually deep under /usr/lib or /lib.
+# We need OpenSCAD to build against Nix, but Nix doesn't come with DRI
+# GL graphics drivers. There is no simple way to tell Nixs libGL.so how
+# to load these drivers, since Nix uses a specially modified program
+# linker and dynamic object loader (ld-linux.so) than the system itself.
+# The DRI files depend on many .so libraries that Nix's loader cannot easily
+# find or work with.
 #
-# To determine the proper DRI driver without root access is
-# extraordinarily complex, so we use Mesa to find it for us, by running
-# LIBGL_DEBUG=verbose glxinfo and looking at which driver it ran open() on.
-#
-# Then we copy the driver, and all it's dependency .so files, to a
-# subdir, called __oscd_nix_gl__. We patchelf the rpath of this copy of
-# the driver, and the copies of its dependencies, to point to this same
-# subdir, so they dont need LD_LIBRARY_PATH to find their deps at runtime.
-#
-# Lastly, we take advantage of libGL.so feature called LIBGL_DRIVERS_DIR
-# so that we can tell Nix's version of libGL.so where to find the special
-# copy of the DRI driver we just created.
-#
-# Now since Nix's libGL.so will load our special copy of the DRI driver,
-# which will in turn load the special copies of its dependency libraries
-# from it's rpath, which is our __oscd_nix_gl__ dir. Therefore it wont
-# interefer with Nix.
-#
-# In theory
+# Therefore, we find the DRI drivers ourselves, copy them to a subfolder,
+# find their dependency .so files, copy them as well to the same subfolder,
+# patchelf all their rpaths, and tell Nix libGL to use our special copies.
+# Then Nix libGL.so will dlopen() our special copies of the drivers,
+# and hopefully their dependencies wont conflict with Nix's.
 #
 # See Also
 # https://github.com/NixOS/nixpkgs/issues/9415#issuecomment-170661702
@@ -144,6 +132,13 @@ find_driver_used_by_glxinfo() {
   echo $drifilepath
 }
 
+find_libudev_used_by_glxinfo() {
+  glxi_udevlog=$1/oscd-glxinfo-libudev.txt
+  run_glxinfo $glxi_udevlog strace -f
+  udevpath=`cat $glxi_udevlog | grep "open.*libudev.so.*5" | tail -1 | sed s/\"/\ /g | awk ' { print $2 } '`
+  echo $udevpath
+}
+
 find_shlibs() {
   find_shlib=$1
   ldd_logfile=$2/oscd-ldd-log.txt
@@ -169,10 +164,16 @@ install_under_specialdir() {
   target_deref_fname=`basename $original_deref_path`
   target_deref_path=$target_dir/$target_deref_fname
   if [ -L $original_path ]; then
-    ln -s $target_deref_path $target_path
-    cp -v $original_path $target_deref_path
+    if [ ! -e $target_path ]; then
+      ln -s $target_deref_path $target_path
+    fi
+    if [ ! -e $target_deref_path ]; then
+      cp -v $original_path $target_deref_path
+    fi
   else
-    cp -v $original_path $target_path
+    if [ ! -e $target_path ]; then
+      cp -v $original_path $target_path
+    fi
   fi
 
   saved_permissions=`stat -c%a $target_deref_path`
@@ -180,6 +181,25 @@ install_under_specialdir() {
   patchelf --set-rpath $OSCD_NIXGL_DIR $target_deref_path
   chmod $saved_permissions $target_deref_path
 }
+
+install_so_file_and_deps() {
+  SO_FILEPATH=$1
+  DEST_DIR=$2
+  DEPLIST_FILE=$3
+  install_under_specialdir $SO_FILEPATH $DEST_DIR
+  NEW_SO_FILEPATH=$DEST_DIR/`basename $SO_FILEPATH`
+
+  dep_libs=$(find_shlibs $NEW_SO_FILEPATH $DEST_DIR)
+  echo "" > $DEPLIST_FILE
+  for filenm in $dep_libs ; do
+    echo $filenm >> $DEPLIST_FILE
+  done
+  for deplib in `cat $DEPLIST_FILE | sort` ; do
+    install_under_specialdir $deplib $DEST_DIR
+  done
+}
+
+
 
 set -e
 set -x
@@ -205,23 +225,20 @@ fi
 verify_script_deps $*
 
 gllog=$OSCD_NIXGL_DIR/oscd-gl-setup-info.txt
+echo "" > $gllog
 
 SYS_DRI_SO_FILEPATH=$(find_driver_used_by_glxinfo $OSCD_NIXGL_DIR)
-install_under_specialdir $SYS_DRI_SO_FILEPATH $OSCD_NIXGL_DIR
-NEW_DRI_SO_FILEPATH=$OSCD_NIXGL_DIR/`basename $SYS_DRI_SO_FILEPATH`
+DEPLIST=$1/oscd-driver-deplist.txt
+install_so_file_and_deps $SYS_DRI_SO_FILEPATH $OSCD_NIXGL_DIR $DEPLIST
 
-driver_dep_libs=$(find_shlibs $NEW_DRI_SO_FILEPATH $OSCD_NIXGL_DIR)
-driverlist=$1/oscd-gldriver-deplist.txt
-for filenm in $driver_dep_libs ; do
-  echo $filenm >> $driverlist
-done
+# older versions of Mesa depend on dlopen(libudev) to find the DRI driver.
+SYS_LIBUDEV_FILEPATH=$(find_libudev_used_by_glxinfo $OSCD_NIXGL_DIR)
+if [ $SYS_LIBUDEV_FILEPATH ]; then
+  DEPLIST=$1/oscd-libudev-deplist.txt
+  install_so_file_and_deps $SYS_LIBUDEV_FILEPATH $OSCD_NIXGL_DIR $DEPLIST
+fi
 
-for driver_deplib in `cat $driverlist | sort` ; do
-  install_under_specialdir $driver_deplib $OSCD_NIXGL_DIR
-done
-
-echo "DRI driver "$SYS_DRI_SO_FILEPATH   > $gllog
-echo "moved to   "$NEW_DRI_SO_FILEPATH  >> $gllog
+echo "DRI driver "$SYS_DRI_SO_FILEPATH  >> $gllog
 echo "glxinfo    "`which glxinfo`       >> $gllog
 echo "ldd        "$LDD_FULLEXEC         >> $gllog
 echo "rpaths of .so in $OSCD_NIXGL_DIR" >> $gllog
