@@ -1,9 +1,12 @@
-# This is a helper script for using OpenGL(TM) drivers when OpenSCAD is
-# built under the Nix packaging system, as Nix does not currently do this(2017)
+# This is a helper script for using OpenGL(TM) drivers when OpenSCAD is built
+# under the Nix packaging system, as Nix does not currently do this (2017)
 #
 # To use:
 #
-#  Don't. This script is normally called from scripts/nixshell-run.sh
+# Don't. This script is normally called from scripts/nixshell-run.sh
+#
+#   First argument: directory to store modified GL driver .so files + deps
+#   Second argument: path to system's ldd program (usually /usr/bin/ldd)
 #
 # To test: (Keep in mind things like ldd, patchelf, differ when testing)
 #          (Because nix has its own version of many of these items)
@@ -251,10 +254,10 @@ if [ $SYS_LIBUDEV_FILEPATH ]; then
   install_so_file_and_deps $SYS_LIBUDEV_FILEPATH $OSCD_NIXGL_DIR $DEPLIST
 fi
 
-echo "DRI driver "$SYS_DRI_SO_FILEPATH  >> $gllog
-echo "glxinfo    "`which glxinfo`       >> $gllog
-echo "ldd        "$LDD_FULLEXEC         >> $gllog
-echo "rpaths of .so in $OSCD_NIXGL_DIR" >> $gllog
+echo "DRI driver    "$SYS_DRI_SO_FILEPATH    >> $gllog
+echo "glxinfo       "`which glxinfo`         >> $gllog
+echo "ldd           "$LDD_FULLEXEC           >> $gllog
+echo "rpaths of .so in $OSCD_NIXGL_DIR"      >> $gllog
 for file in $OSCD_NIXGL_DIR/*so*; do
   if [ ! -L $file ]; then
     echo " "`basename $file` `patchelf --print-rpath $file` >> $gllog
