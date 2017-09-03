@@ -192,11 +192,10 @@ can use the Nix packaging system to install them for you. It requires
 root or sudo access.
 
 First, visit the Nix website at https://nixos.org/nix/ and follow the 
-installation instructions. It will install nix by default under the 
-/nix/ folder, with some scripts in your home directory under $HOME/.nix*.
+installation instructions. This will create /nix and $HOME/.nix_profile
 
-Then run the following script. It may take several hours and use several
-gigabytes of diskspace as it installs necessary dependencies.
+Then run the following script to install nix dependencies for building
+OpenSCAD. This may take several hours and use several gigabytes of diskspace.
 
     ./scripts/nixshell-run.sh
 
