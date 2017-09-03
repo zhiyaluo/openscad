@@ -77,6 +77,10 @@ verify_script_deps() {
     echo please read top of $0 if you want to use this script directly.
     exit
   fi
+  if [ ! "`command -v patchelf`" ]; then
+    echo sorry, this script, $0, needs patchelf in your PATH. exiting.
+    exit
+  fi
   if [ ! "`command -v glxinfo`" ]; then
     echo sorry, this script, $0, needs glxinfo in your PATH. exiting.
     exit
