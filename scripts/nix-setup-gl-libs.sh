@@ -70,9 +70,11 @@ verify_script_deps() {
     exit
   fi
   if [ ! $1 ]; then
-    echo this script is usually run from openscad/scripts/nixshell-run.sh
-    echo if you are working on this script itself, run like so:
-    echo IN_NIX_SHELL=1 $0 /tmp/nixsetupgl
+    echo please read top of $0 if you want to use this script directly.
+    exit
+  fi
+  if [ ! $2 ]; then
+    echo please read top of $0 if you want to use this script directly.
     exit
   fi
   if [ ! "`command -v glxinfo`" ]; then
@@ -88,7 +90,15 @@ verify_script_deps() {
     mkdir -p $1
   fi
   if [ ! "`command -v dirname`" ]; then
-    echo sorry, this script, $*, needs dirname. exiting.
+    echo sorry, this script, $*, needs dirname command. exiting.
+    exit
+  fi
+  if [ ! "`command -v basename`" ]; then
+    echo sorry, this script, $*, needs the basename command. exiting.
+    exit
+  fi
+  if [ ! "`command -v strace`" ]; then
+    echo sorry, this script, $*, needs the strace command. exiting.
     exit
   fi
   if [ ! "`command -v $LDD_FULLEXEC`" ]; then
