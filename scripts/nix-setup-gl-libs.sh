@@ -89,7 +89,7 @@ verify_script_deps() {
     exit
   fi
   if [ ! "`command -v glxinfo`" ]; then
-    echo sorry, this script, $0, needs glxinfo in your PATH. exiting.
+    echo sorry, this script, $0, needs System glxinfo in your PATH. exiting.
     exit
   fi
   if [ "`which glxinfo | grep nix.store`" ]; then
