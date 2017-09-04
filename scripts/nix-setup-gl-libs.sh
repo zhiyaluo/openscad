@@ -13,24 +13,30 @@
 #
 #  /openscad/bin$ IN_NIX_SHELL=1 ../scripts/nix-setup-gl-libs.sh ./testgldir /usr/bin/ldd
 #
-# To test with software rendering:
+# To use with software rendering:
 #
-#  /openscad/bin$ LIBGL_ALWAYS_SOFTWARE=1 IN_NIX_SHELL=1 ../scripts/nix-setup-gl-libs.sh ./testdir /usr/bin/ldd
+#  /openscad/bin$ export LIBGL_ALWAYS_SOFTWARE=1
+#  /openscad/bin$ # run the same steps.. it will find swrast_dri.so and
+#                 # use that as it's dri driver in place of a hardware driver
 #
 # Theory:
 #
-# We need OpenSCAD to build against Nix, but Nix doesn't come with DRI
-# GL graphics drivers. There is no simple way to tell Nixs libGL.so how
-# to load these drivers, since Nix uses a specially modified linker and
+# We need OpenSCAD to run using Nix packages, but Nix doesn't come with DRI
+# GL graphics drivers. There is no simple way to tell Nix's libGL.so how
+# to load these drivers, since Nix uses both a specially modified linker and
 # dynamic object loader (ld, ld-linux.so) that are different than what
-# the operating system itself uses. The DRI files depend on many .so
-# libraries that Nix's loader cannot easily find or work with.
+# the operating system itself uses. The DRI .so driver files depend on many
+# other .so libraries that Nix's loader cannot easily find or work with.
 #
-# Therefore, we find the DRI drivers ourselves, copy them to a subfolder,
-# find their dependency .so files, copy them as well to the same subfolder,
-# patchelf all their rpaths, and tell Nix libGL to use our special copies.
-# Then Nix libGL.so will dlopen() our copies of the drivers,
-# and hopefully their dependencies wont conflict with Nix's.
+# Therefore, we find the DRI drivers ourselves, copy them to a
+# subfolder, find their dependency .so files, copy them as well to the
+# same subfolder, patchelf all their rpaths, and tell Nix libGL to use
+# our copy of the DRI driver. Then Nix libGL.so will dlopen() our copy of the
+# driver, and its INTERP loader will use it's rpath to load our copies of the
+# dependencies, which will in turn use their rpaths to load our copies of their
+# dependencies, recursing down the dependency tree until all DRI
+# dependency .so files are loaded. Hopefully this way the DRI driver
+# dependencies wont conflict with Nix's.
 #
 # See Also
 # https://github.com/NixOS/nixpkgs/issues/9415#issuecomment-170661702
@@ -244,7 +250,7 @@ if [ -d $OSCD_NIXGL_DIR ]; then
     rm -f $OSCD_NIXGL_DIR/*
     rmdir $OSCD_NIXGL_DIR
   else
-    echo please use an openscad_nixgl_dir under present directory $PWD
+    echo please use a target directory that is under present directory $PWD
     exit
   fi
 fi
