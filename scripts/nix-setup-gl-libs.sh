@@ -65,6 +65,13 @@ run_glxinfo() {
 }
 
 verify_script_deps() {
+  if [ -e /run/opengl-drivers ]; then
+    echo sorry, your system appears to contain /run/opengl-drivers.
+    echo this script is not intended for systems using that directory.
+    echo if you wish to use this script, please backup the contents
+    echo of /run/opengl-drivers and then remove it from your system. thank you
+    exit
+  fi
   if [ ! $IN_NIX_SHELL ]; then
     echo sorry, this needs to be run from within nix-shell environment. exiting.
     exit
