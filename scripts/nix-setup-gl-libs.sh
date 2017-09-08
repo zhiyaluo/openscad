@@ -94,32 +94,34 @@ verify_script_deps() {
     echo sorry, this script, $0, needs patchelf in your PATH. exiting.
     exit
   fi
+  if [ ! "`command -v readlink`" ]; then
+    echo sorry, this script, $0, needs readlink in your PATH. exiting.
+    exit
+  fi
   if [ ! "`command -v glxinfo`" ]; then
     echo sorry, this script, $0, needs System glxinfo in your PATH. exiting.
     exit
   fi
   if [ "`which glxinfo | grep nix.store`" ]; then
-    echo sorry, this script, $0, needs system glxinfo in your PATH. but
+    echo sorry, this script, $0 needs system glxinfo in your PATH. but
     echo it appears your glxinfo is from Nix. please use a clean shell.
     exit
   fi
-  if [ ! -d $1 ]; then
-    mkdir -p $1
-  fi
   if [ ! "`command -v dirname`" ]; then
-    echo sorry, this script, $*, needs dirname command. exiting.
+    echo sorry, this script, $*, needs dirname command in your PATH. exiting.
     exit
   fi
   if [ ! "`command -v basename`" ]; then
-    echo sorry, this script, $*, needs the basename command. exiting.
+    echo sorry, this script, $0, needs the basename command in your PATH. exiting.
     exit
   fi
   if [ ! "`command -v strace`" ]; then
-    echo sorry, this script, $*, needs the strace command. exiting.
+    echo sorry, this script, $0, needs the strace command in your PATH. exiting.
     exit
   fi
   if [ ! "`command -v $LDD_FULLEXEC`" ]; then
-    echo sorry, this script, $*, needs ldd. exiting.
+    echo LDD_FULLEXEC was $LDD_FULLEXEC
+    echo sorry, this script, $0, needs ldd passed as second argument. exiting.
     exit
   fi
 }
@@ -241,8 +243,13 @@ set -x
 
 #OSCD_NIXGL_DIR=/run/opengl-driver/lib/dri # Nix's version of the world
 #OSCD_NIXGL_DIR=$PWD/__oscd_nix_gl__/dri   # as called by nixshell-run.sh
-OSCD_NIXGL_DIR=`readlink -f $1`
-LDD_FULLEXEC=`readlink -f $2`
+OSCD_NIXGL_DIR=$1
+LDD_FULLEXEC=$2
+
+verify_script_deps $*
+
+OSCD_NIXGL_DIR=`readlink -f $OSCD_NIXGL_DIR`
+LDD_FULLEXEC=`readlink -f $LDD_FULLEXEC`
 
 if [ -d $OSCD_NIXGL_DIR ]; then
   # prevent disasters
@@ -255,7 +262,7 @@ if [ -d $OSCD_NIXGL_DIR ]; then
   fi
 fi
 
-verify_script_deps $*
+mkdir -p $OSCD_NIXGL_DIR
 
 gllog=$OSCD_NIXGL_DIR/oscd-gl-setup-info.txt
 echo "" > $gllog

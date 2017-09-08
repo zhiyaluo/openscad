@@ -36,11 +36,15 @@ if [ -d ./__nix_qt5__ ]; then
   rm -rf ./__nix_qt5__
 fi
 
+set -x
+
 thisscript=$0
 scriptdir=`dirname $0`
 glsetup=$scriptdir/nix-setup-gl-libs.sh
 DRI_DIR=$PWD/__oscd_nix_gl__
 LDD_EXEC=`which ldd`
+export DRI_DIR
+export LDD_EXEC
 
 # this will auto-install nix packages, several gigabytes worth!
 nix-shell -p pkgconfig gcc gnumake \
@@ -58,3 +62,5 @@ nix-shell -p pkgconfig gcc gnumake \
 # LIBGL_DRIVERS_DIR = special environment variable for MESA, points to our DRI drivers
 # Note that LIBGL_DRIVERS_DIR needs to be set after calling $glsetup,
 # because if you call it before, glsetup's glxinfo cant find system drivers
+
+set +x
