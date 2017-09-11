@@ -36,7 +36,7 @@ fi
 
 if [ ! -e ~/.nix-profile/etc/profile.d/nix.sh ]; then
   echo i cant find ~/.nix-profile/etc/profile.d/nix.sh
-  echo please install the nix package manager, see http://nixos.org
+  echo please install the nix package manager, see https://nixos.org/nix/
   exit
 fi
 
