@@ -72,7 +72,9 @@ run_glxinfo() {
   sleep 1
   sleep 1
   set +e
-  kill $glxinfopid
+  if [ "`ps cax | grep $glxinfopid | grep glxinfo`" ]; then
+    kill $glxinfopid
+  fi
   set -e
 }
 
@@ -147,6 +149,7 @@ log_executables() {
   echo " cp           "`which cp`              >> $gllog
   echo " ln           "`which ln`              >> $gllog
   echo " [            "`which [`               >> $gllog
+  echo "" >> $gllog
 }
 
 find_driver_used_by_glxinfo() {
@@ -227,11 +230,11 @@ install_under_specialdir() {
       ln -s $target_deref_fname $target_path
     fi
     if [ ! -e $target_deref_path ]; then
-      cp -v $original_path $target_deref_path
+      cp $original_path $target_deref_path
     fi
   else
     if [ ! -e $target_path ]; then
-      cp -v $original_path $target_path
+      cp $original_path $target_path
     fi
   fi
 
@@ -240,7 +243,7 @@ install_under_specialdir() {
   patchelf_log=$NIX_KLUDGE_GL_DIR/kludgegl-patchelf-log.txt
   echo $target_deref_path >> $patchelf_log
   set +e
-  patchelf --set-rpath $NIX_KLUDGE_GL_DIR $target_deref_path 2>&1 | tee >> $patchelf_log
+  patchelf --set-rpath $NIX_KLUDGE_GL_DIR $target_deref_path 2>> $patchelf_log 1>>$patchelf_log
   set -e
   chmod $saved_permissions $target_deref_path
 }
@@ -263,9 +266,10 @@ install_so_file_and_deps() {
 }
 
 
-
-set -e
-set -x
+if [ $SUPERDEBUG_NGL ]; then
+  set -e
+  set -x
+fi
 
 # export DISPLAY=:0 # for testing obscure systems
 
@@ -293,10 +297,12 @@ mkdir -p $NIX_KLUDGE_GL_DIR
 gllog=$NIX_KLUDGE_GL_DIR/kludgegl-setup-info.txt
 log_executables $gllog
 
+echo "finding and copying DRI driver .so file + dependencies"
 SYS_DRI_SO_FILEPATH=$(find_driver_used_by_glxinfo $NIX_KLUDGE_GL_DIR)
 DEPLIST=$1/kludgegl-driver-deplist.txt
 install_so_file_and_deps $SYS_DRI_SO_FILEPATH $NIX_KLUDGE_GL_DIR $DEPLIST
 
+echo "finding and copying swrast DRI driver .so file + dependencies"
 if [ ! $LIBGL_ALWAYS_SOFTWARE ]; then
   LIBGL_ALWAYS_SOFTWARE=1
   export LIBGL_ALWAYS_SOFTWARE
@@ -307,22 +313,30 @@ if [ ! $LIBGL_ALWAYS_SOFTWARE ]; then
   export LIBGL_ALWAYS_SOFTWARE
 fi
 
-# older versions of Mesa depend on dlopen(libudev) to find the DRI driver.
+echo "if necessary, copying libudev (for older versions of Mesa libGL.so)"
 SYS_LIBUDEV_FILEPATH=$(find_libudev_used_by_glxinfo $NIX_KLUDGE_GL_DIR)
 if [ $SYS_LIBUDEV_FILEPATH ]; then
   DEPLIST=$1/kludgegl-libudev-deplist.txt
   install_so_file_and_deps $SYS_LIBUDEV_FILEPATH $NIX_KLUDGE_GL_DIR $DEPLIST
 fi
 
-echo "SWRAST DRI driver:"$SYS_SWRAST_DRI_SO_FILEPATH >> $gllog
-echo "DRI driver:   "$SYS_DRI_SO_FILEPATH    >> $gllog
+echo "Completing log" $gllog
+
+echo "System SWRAST DRI driver: "$SYS_SWRAST_DRI_SO_FILEPATH >> $gllog
+echo "System DRI driver:   "$SYS_DRI_SO_FILEPATH    >> $gllog
 echo "rpaths of .so in $NIX_KLUDGE_GL_DIR:"   >> $gllog
 for file in $NIX_KLUDGE_GL_DIR/*so*; do
   if [ ! -L $file ]; then
-    echo " "`basename $file` `patchelf --print-rpath $file` >> $gllog
+    echo "" >> $gllog
+    echo `basename $file`":" >> $gllog
+    patchelf --print-rpath $file 2>&1 | tee >> $gllog
   fi
 done
-set +x
-set +e
+
+
+if [ $SUPERDEBUG_NGL ]; then
+  set +x
+  set +e
+fi
 
 

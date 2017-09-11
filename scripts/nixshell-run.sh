@@ -13,6 +13,10 @@
 # nixpkgs.libsForQt56.qscintilla                     qscintilla-qt5-2.9.4
 # nixpkgs.libsForQt5.qscintilla                      qscintilla-qt5-2.9.4
 
+if [ $SUPERDEBUG_NGL ]; then
+  set -x
+fi
+
 if [ $IN_NIX_SHELL ]; then
   echo already running inside Nix-shell, please exit before running this script
   exit
@@ -44,8 +48,6 @@ if [ -d ./__nix_qt5__ ]; then
   rm -rf ./__nix_qt5__
 fi
 
-set -x
-
 thisscript=$0
 scriptdir=`dirname $0`
 glsetup=$scriptdir/nix-setup-gl-libs.sh
@@ -72,4 +74,6 @@ nix-shell -p pkgconfig gcc gnumake \
 # Note that LIBGL_DRIVERS_DIR needs to be set after calling $glsetup,
 # because it needs to call glxinfo from the system context not Nix context
 
-set +x
+if [ $SUPERDEBUG_NGL ]; then
+  set +x
+fi
