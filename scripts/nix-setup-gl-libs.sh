@@ -278,10 +278,19 @@ if [ $SYS_LIBUDEV_FILEPATH ]; then
   install_so_file_and_deps $SYS_LIBUDEV_FILEPATH $OSCD_NIXGL_DIR $DEPLIST
 fi
 
-echo "DRI driver    "$SYS_DRI_SO_FILEPATH    >> $gllog
-echo "glxinfo       "`which glxinfo`         >> $gllog
-echo "ldd           "$LDD_FULLEXEC           >> $gllog
-echo "rpaths of .so in $OSCD_NIXGL_DIR"      >> $gllog
+echo "DRI driver:   "$SYS_DRI_SO_FILEPATH    >> $gllog
+echo "executables:  "                        >> $gllog
+echo " glxinfo      "`which glxinfo`         >> $gllog
+echo " ldd          "$LDD_FULLEXEC           >> $gllog
+echo " strace       "`which strace`          >> $gllog
+echo " readlink     "`which readlink`        >> $gllog
+echo " dirname      "`which dirname`         >> $gllog
+echo " basename     "`which basename`        >> $gllog
+echo " patchelf     "`which patchelf`        >> $gllog
+echo " cp           "`which cp`              >> $gllog
+echo " ln           "`which ln`              >> $gllog
+echo " [            "`which [`               >> $gllog
+echo "rpaths of .so in $OSCD_NIXGL_DIR:"     >> $gllog
 for file in $OSCD_NIXGL_DIR/*so*; do
   if [ ! -L $file ]; then
     echo " "`basename $file` `patchelf --print-rpath $file` >> $gllog

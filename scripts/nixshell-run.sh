@@ -53,7 +53,7 @@ nix-shell -p pkgconfig gcc gnumake \
    glib libxml2 libzip harfbuzz freetype fontconfig \
    glew xorg.libX11 xorg_sys_opengl mesa \
    qt5.full qt5.qtbase libsForQt5.qscintilla \
-   llvm patchelf \
+   llvm patchelf strace \
    --command "$glsetup $DRI_DIR $LDD_EXEC; export LIBGL_DRIVERS_DIR=$DRI_DIR; return"
 
 # $glsetup = the script to set up special GL libraries, see nix-setup-gl-libs.sh
