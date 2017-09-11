@@ -1,19 +1,23 @@
-# This is a helper script for using OpenGL(TM) drivers when OpenSCAD is built
-# under the Nix packaging system, as Nix does not currently do this (2017)
+# This is a kludge to enable running OpenGL(TM) programs under the Nix
+# packaging system on Linux platforms. It works by copying system DRI
+# drivers and dependencies into a subdirectory,  modifying the dynamic
+# linking/loading rpath of these .so files with patchelf,  then passing
+# LIBGL_DRIVER_DIR to Nix's libGL.so so it will dlopen() our special copies
+# of these drivers.
 #
 # To use:
 #
-# Don't. This script is normally called from scripts/nixshell-run.sh
-#
-#   First argument: directory to store modified GL driver .so files + deps
-#   Second argument: path to system's ldd program (usually /usr/bin/ldd)
+#   Don't. This script is normally called from scripts/nixshell-run.sh
 #
 # To test: (Keep in mind things like ldd, patchelf, differ when testing)
 #          (Because nix has its own version of many of these items)
 #
+#   First argument: directory to store modified GL driver .so files + deps
+#   Second argument: path to system's ldd program (usually /usr/bin/ldd)
+#
 #  /openscad/bin$ IN_NIX_SHELL=1 ../scripts/nix-setup-gl-libs.sh ./testgldir /usr/bin/ldd
 #
-# To use with software rendering:
+# To test with software rendering:
 #
 #  /openscad/bin$ export LIBGL_ALWAYS_SOFTWARE=1
 #  /openscad/bin$ # run the same steps.. it will find swrast_dri.so and
@@ -25,14 +29,18 @@
 # GL graphics drivers. There is no simple way to tell Nix's libGL.so how
 # to load these drivers, since Nix uses both a specially modified linker and
 # dynamic object loader (ld, ld-linux.so) that are different than what
-# the operating system itself uses. The DRI .so driver files depend on many
-# other .so libraries that Nix's loader cannot easily find or work with.
+# the operating system itself uses. Nix by default looks under the /run
+# directory in /run/opengl-drivers but that is of little use to us since
+# that path requires root access and doesnt always persist across reboots.
+# The DRI .so driver files depend on many other .so libraries that Nix's
+# loader cannot easily find or work with. For example the usual trick
+# of setting LD_LIBRARY_PATH trick doesn't work very well.
 #
 # Therefore, we find the DRI drivers ourselves, copy them to a
 # subfolder, find their dependency .so files, copy them as well to the
 # same subfolder, patchelf all their rpaths, and tell Nix libGL to use
 # our copy of the DRI driver. Then Nix libGL.so will dlopen() our copy of the
-# driver, and its INTERP loader will use it's rpath to load our copies of the
+# driver, and its INTERP ELF loader will use it's rpath to load our copies of
 # dependencies, which will in turn use their rpaths to load our copies of their
 # dependencies, recursing down the dependency tree until all DRI
 # dependency .so files are loaded. Hopefully this way the DRI driver
@@ -43,7 +51,7 @@
 # https://grahamwideman.wordpress.com/2009/02/09/the-linux-loader-and-how-it-finds-libraries/
 # http://www.airs.com/blog/archives/38
 # http://www.airs.com/blog/archives/39
-# http://www.airs.com/blog/archives/ (up to 50)
+# http://www.airs.com/blog/archives/ (thru 50)
 # https://anonscm.debian.org/git/pkg-xorg/lib/mesa.git/tree/docs/libGL.txt
 # https://anonscm.debian.org/git/pkg-xorg/lib/mesa.git/tree/src/loader/
 # https://github.com/deepfire/nix-install-vendor-gl
@@ -52,8 +60,6 @@
 # rpath, mmap, strace, shared libraries, linkers, loaders
 # https://unix.stackexchange.com/questions/97676/how-to-find-the-driver-module-associated-with-a-device-on-linux
 # https://stackoverflow.com/questions/5103443/how-to-check-what-shared-libraries-are-loaded-at-run-time-for-a-given-process
-# sudo cat /proc/$Xserverprocessid/maps | grep dri
-# sudo lsof -p $Xserverprocessid | grep dri
 # https://superuser.com/questions/1144758/overwrite-default-lib64-ld-linux-x86-64-so-2-to-call-executables
 # https://stackoverflow.com/a/3450447
 
@@ -126,18 +132,36 @@ verify_script_deps() {
   fi
 }
 
+log_executables() {
+  gllog=$1
+  echo "executables:  "                        >> $gllog
+  echo " glxinfo      "`which glxinfo`         >> $gllog
+  echo " ldd          "$LDD_FULLEXEC           >> $gllog
+  echo " strace       "`which strace`          >> $gllog
+  echo " stat         "`which stat`            >> $gllog
+  echo " chmod        "`which chmod`           >> $gllog
+  echo " readlink     "`which readlink`        >> $gllog
+  echo " dirname      "`which dirname`         >> $gllog
+  echo " basename     "`which basename`        >> $gllog
+  echo " patchelf     "`which patchelf`        >> $gllog
+  echo " cp           "`which cp`              >> $gllog
+  echo " ln           "`which ln`              >> $gllog
+  echo " [            "`which [`               >> $gllog
+}
+
 find_driver_used_by_glxinfo() {
-  # this attempts to parse debug output of glxinfo to find DRI driver
-  # example for Ubuntu 16 linux system using Intel(tm) 3d graphics chip:
+  # this attempts to parse debug output of glxinfo with the LIBGL_DEBUG=verbose
+  # environment variable, in order to find which DRI driver file it loads.
+  # Underneath, glxinfo is using Mesa's extremely complicated chip detection
+  # code, much of it under Mesa's "loader" subsystem.
+  # Here is example output for Ubuntu 16 linux system using Intel(tm) 3d chip:
   # libGL: OpenDriver: trying /usr/lib/x86_64-linux-gnu/dri/i965_dri.so
 
   save_libgldebug=$LIBGL_DEBUG
   LIBGL_DEBUG=verbose
   export LIBGL_DEBUG
-  glxinfo_debug_log=$1/oscd-glxinfo-debug.txt
-  if [ -e $glxinfo_debug_log ]; then
-    rm $glxinfo_debug_log
-  fi
+  glxinfo_debug_log=$1/kludgegl-glxinfo-debug.txt
+  echo "------------" >> $glxinfo_debug_log
   run_glxinfo $glxinfo_debug_log
   LIBGL_DEBUG=$save_libgldebug
 
@@ -162,21 +186,21 @@ find_driver_used_by_glxinfo() {
 }
 
 find_libudev_used_by_glxinfo() {
-  glxi_udevlog=$1/oscd-glxinfo-libudev.txt
+  glxi_udevlog=$1/kludgegl-glxinfo-libudev.txt
   run_glxinfo $glxi_udevlog strace -f
   udevpath=`cat $glxi_udevlog | grep "open.*libudev.so.*5" | tail -1 | sed s/\"/\ /g | awk ' { print $2 } '`
   echo $udevpath
 }
 
 find_shlibs() {
-  find_shlib=$1
-  ldd_logfile=$2/oscd-ldd-log.txt
-  saved_permissions=`stat -c%a $find_shlib`
-  chmod u+x $find_shlib
+  start_libfile=$1
+  ldd_logfile=$2/kludgegl-ldd-log.txt
+  saved_permissions=`stat -c%a $start_libfile`
+  chmod u+x $start_libfile
   echo $LDD_FULLEXEC > $ldd_logfile
-  $LDD_FULLEXEC $find_shlib >> $ldd_logfile
+  $LDD_FULLEXEC $start_libfile >> $ldd_logfile
   shlibs=`cat $ldd_logfile | grep "=>" | awk ' { print $3 } ' `
-  chmod $saved_permissions $find_shlib
+  chmod $saved_permissions $start_libfile
   fs_result=
   for filenm in `echo $shlibs`; do
     if [ -e $filenm ]; then
@@ -200,7 +224,7 @@ install_under_specialdir() {
   target_deref_path=$target_dir/$target_deref_fname
   if [ -L $original_path ]; then
     if [ ! -e $target_path ]; then
-      ln -s $target_deref_path $target_path
+      ln -s $target_deref_fname $target_path
     fi
     if [ ! -e $target_deref_path ]; then
       cp -v $original_path $target_deref_path
@@ -213,23 +237,27 @@ install_under_specialdir() {
 
   saved_permissions=`stat -c%a $target_deref_path`
   chmod u+w $target_deref_path
-  patchelf --set-rpath $OSCD_NIXGL_DIR $target_deref_path
+  patchelf_log=$NIX_KLUDGE_GL_DIR/kludgegl-patchelf-log.txt
+  echo $target_deref_path >> $patchelf_log
+  set +e
+  patchelf --set-rpath $NIX_KLUDGE_GL_DIR $target_deref_path 2>&1 | tee >> $patchelf_log
+  set -e
   chmod $saved_permissions $target_deref_path
 }
 
 install_so_file_and_deps() {
   SO_FILEPATH=$1
   DEST_DIR=$2
-  DEPLIST_FILE=$3
+  DEPLIST_LOGFILE=$3
   install_under_specialdir $SO_FILEPATH $DEST_DIR
   NEW_SO_FILEPATH=$DEST_DIR/`basename $SO_FILEPATH`
 
   dep_libs=$(find_shlibs $NEW_SO_FILEPATH $DEST_DIR)
-  echo "" > $DEPLIST_FILE
+  echo "" > $DEPLIST_LOGFILE
   for filenm in $dep_libs ; do
-    echo $filenm >> $DEPLIST_FILE
+    echo $filenm >> $DEPLIST_LOGFILE
   done
-  for deplib in `cat $DEPLIST_FILE | sort` ; do
+  for deplib in `cat $DEPLIST_LOGFILE | sort` ; do
     install_under_specialdir $deplib $DEST_DIR
   done
 }
@@ -241,57 +269,55 @@ set -x
 
 # export DISPLAY=:0 # for testing obscure systems
 
-#OSCD_NIXGL_DIR=/run/opengl-driver/lib/dri # Nix's version of the world
-#OSCD_NIXGL_DIR=$PWD/__oscd_nix_gl__/dri   # as called by nixshell-run.sh
-OSCD_NIXGL_DIR=$1
+NIX_KLUDGE_GL_DIR=$1
 LDD_FULLEXEC=$2
 
 verify_script_deps $*
 
-OSCD_NIXGL_DIR=`readlink -f $OSCD_NIXGL_DIR`
+NIX_KLUDGE_GL_DIR=`readlink -f $NIX_KLUDGE_GL_DIR`
 LDD_FULLEXEC=`readlink -f $LDD_FULLEXEC`
 
-if [ -d $OSCD_NIXGL_DIR ]; then
+if [ -d $NIX_KLUDGE_GL_DIR ]; then
   # prevent disasters
-  if [ "`echo $OSCD_NIXGL_DIR| grep $PWD`" ]; then
-    rm -f $OSCD_NIXGL_DIR/*
-    rmdir $OSCD_NIXGL_DIR
+  if [ "`echo $NIX_KLUDGE_GL_DIR| grep $PWD`" ]; then
+    rm -f $NIX_KLUDGE_GL_DIR/*
+    rmdir $NIX_KLUDGE_GL_DIR
   else
     echo please use a target directory that is under present directory $PWD
     exit
   fi
 fi
 
-mkdir -p $OSCD_NIXGL_DIR
+mkdir -p $NIX_KLUDGE_GL_DIR
 
-gllog=$OSCD_NIXGL_DIR/oscd-gl-setup-info.txt
-echo "" > $gllog
+gllog=$NIX_KLUDGE_GL_DIR/kludgegl-setup-info.txt
+log_executables $gllog
 
-SYS_DRI_SO_FILEPATH=$(find_driver_used_by_glxinfo $OSCD_NIXGL_DIR)
-DEPLIST=$1/oscd-driver-deplist.txt
-install_so_file_and_deps $SYS_DRI_SO_FILEPATH $OSCD_NIXGL_DIR $DEPLIST
+SYS_DRI_SO_FILEPATH=$(find_driver_used_by_glxinfo $NIX_KLUDGE_GL_DIR)
+DEPLIST=$1/kludgegl-driver-deplist.txt
+install_so_file_and_deps $SYS_DRI_SO_FILEPATH $NIX_KLUDGE_GL_DIR $DEPLIST
 
-# older versions of Mesa depend on dlopen(libudev) to find the DRI driver.
-SYS_LIBUDEV_FILEPATH=$(find_libudev_used_by_glxinfo $OSCD_NIXGL_DIR)
-if [ $SYS_LIBUDEV_FILEPATH ]; then
-  DEPLIST=$1/oscd-libudev-deplist.txt
-  install_so_file_and_deps $SYS_LIBUDEV_FILEPATH $OSCD_NIXGL_DIR $DEPLIST
+if [ ! $LIBGL_ALWAYS_SOFTWARE ]; then
+  LIBGL_ALWAYS_SOFTWARE=1
+  export LIBGL_ALWAYS_SOFTWARE
+  SYS_SWRAST_DRI_SO_FILEPATH=$(find_driver_used_by_glxinfo $NIX_KLUDGE_GL_DIR)
+  DEPLIST=$1/kludgegl-driver-swrast-deplist.txt
+  install_so_file_and_deps $SYS_SWRAST_DRI_SO_FILEPATH $NIX_KLUDGE_GL_DIR $DEPLIST
+  LIBGL_ALWAYS_SOFTWARE=
+  export LIBGL_ALWAYS_SOFTWARE
 fi
 
+# older versions of Mesa depend on dlopen(libudev) to find the DRI driver.
+SYS_LIBUDEV_FILEPATH=$(find_libudev_used_by_glxinfo $NIX_KLUDGE_GL_DIR)
+if [ $SYS_LIBUDEV_FILEPATH ]; then
+  DEPLIST=$1/kludgegl-libudev-deplist.txt
+  install_so_file_and_deps $SYS_LIBUDEV_FILEPATH $NIX_KLUDGE_GL_DIR $DEPLIST
+fi
+
+echo "SWRAST DRI driver:"$SYS_SWRAST_DRI_SO_FILEPATH >> $gllog
 echo "DRI driver:   "$SYS_DRI_SO_FILEPATH    >> $gllog
-echo "executables:  "                        >> $gllog
-echo " glxinfo      "`which glxinfo`         >> $gllog
-echo " ldd          "$LDD_FULLEXEC           >> $gllog
-echo " strace       "`which strace`          >> $gllog
-echo " readlink     "`which readlink`        >> $gllog
-echo " dirname      "`which dirname`         >> $gllog
-echo " basename     "`which basename`        >> $gllog
-echo " patchelf     "`which patchelf`        >> $gllog
-echo " cp           "`which cp`              >> $gllog
-echo " ln           "`which ln`              >> $gllog
-echo " [            "`which [`               >> $gllog
-echo "rpaths of .so in $OSCD_NIXGL_DIR:"     >> $gllog
-for file in $OSCD_NIXGL_DIR/*so*; do
+echo "rpaths of .so in $NIX_KLUDGE_GL_DIR:"   >> $gllog
+for file in $NIX_KLUDGE_GL_DIR/*so*; do
   if [ ! -L $file ]; then
     echo " "`basename $file` `patchelf --print-rpath $file` >> $gllog
   fi

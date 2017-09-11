@@ -2,17 +2,25 @@
 # dependencies necessary to build OpenSCAD. The Nix package system must be
 # installed for this to work. See ../README.md and http://nixos.org/nix
 
-# To add a package to the list below:
+# This also includes a custom kludge to workaround Nix not including Mesa's DRI
+# drivers for OpenGL(TM) graphics. See nix-setup-gl-libs.sh for details
+
+# To add a specific dependency package to the list below:
 # -Start a nix environment ( source $HOME/.nix-profile/etc/profile.d/nix.sh )
-# -To find a package name, run nix-env -qaP. For example to find qscintilla:
+# -Find the package name with nix-env + grep, for example to find qscintilla:
 #  nix-env -qaP | grep scintilla  # this may take a few minutes
-# -The 'nix packages' will be on the left, the package details on the right.
+# -The nix package name will be on the left, the package details on the right.
 # nixpkgs.libsForQt56.qscintilla                     qscintilla-qt5-2.9.4
 # nixpkgs.libsForQt5.qscintilla                      qscintilla-qt5-2.9.4
 
 if [ $IN_NIX_SHELL ]; then
-  echo already running inside Nix-shell, please exit before running
-  echo this script.
+  echo already running inside Nix-shell, please exit before running this script
+  exit
+fi
+
+if [ $LIBGL_DRIVERS_DIR ]; then
+  echo LIBGL_DRIVERS_DIR environment variable already set. please run this
+  echo script only from a clean shell.
   exit
 fi
 
@@ -41,7 +49,7 @@ set -x
 thisscript=$0
 scriptdir=`dirname $0`
 glsetup=$scriptdir/nix-setup-gl-libs.sh
-DRI_DIR=$PWD/__oscd_nix_gl__
+DRI_DIR=$PWD/__nix_kludge_gl__
 LDD_EXEC=`which ldd`
 export DRI_DIR
 export LDD_EXEC
@@ -58,9 +66,10 @@ nix-shell -p pkgconfig gcc gnumake \
 
 # $glsetup = the script to set up special GL libraries, see nix-setup-gl-libs.sh
 # DRI_DIR = location where we will keep our custom patchelf-rpath GL DRI drivers
-# LDD_EXEC = system's ldd, we need this to find the system DRI driver + deps
-# LIBGL_DRIVERS_DIR = special environment variable for MESA, points to our DRI drivers
+# LDD_EXEC = system's ldd (/usr/bin/ldd), to find the system DRI driver deps
+# LIBGL_DRIVERS_DIR = env. var. for Nix's libGL.so, used to dlopen() DRI drivers
+#
 # Note that LIBGL_DRIVERS_DIR needs to be set after calling $glsetup,
-# because if you call it before, glsetup's glxinfo cant find system drivers
+# because it needs to call glxinfo from the system context not Nix context
 
 set +x
