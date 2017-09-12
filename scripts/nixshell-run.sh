@@ -47,6 +47,8 @@ source ~/.nix-profile/etc/profile.d/nix.sh
 if [ -d ./__nix_qt5__ ]; then
   rm -rf ./__nix_qt5__
 fi
+# prevent qmake from confusing itself
+rm -f ./.qmake*
 
 thisscript=$0
 scriptdir=`dirname $0`
@@ -56,8 +58,27 @@ LDD_EXEC=`which ldd`
 export DRI_DIR
 export LDD_EXEC
 
+if [ $PKG_CONFIG_PATH ]; then
+  saved_PKG_CONFIG_PATH=$PKG_CONFIG_PATH
+  PKG_CONFIG_PATH=
+  export PKG_CONFIG_PATH
+fi
+
+MPFRDIR=`nix-build '<nixpkgs>' --no-build-output -A mpfr`
+EIGENDIR=`nix-build '<nixpkgs>' --no-build-output -A eigen`
+BOOSTDIR=`nix-build '<nixpkgs>' --no-build-output -A boost`
+CGALDIR=`nix-build '<nixpkgs>' --no-build-output -A cgal`
+GLEWDIR=`nix-build '<nixpkgs>' --no-build-output -A glew`
+OPENCSGDIR=`nix-build '<nixpkgs>' --no-build-output -A opencsg`
+export MPFRDIR
+export EIGENDIR
+export BOOSTDIR
+export CGALDIR
+export GLEWDIR
+export OPENCSGDIR
+
 # this will auto-install nix packages, several gigabytes worth!
-nix-shell -p pkgconfig gcc gnumake \
+nix-shell -p gcc gnumake pkgconfig \
    opencsg cgal gmp mpfr eigen \
    boost flex bison gettext \
    glib libxml2 libzip harfbuzz freetype fontconfig \
@@ -74,6 +95,11 @@ nix-shell -p pkgconfig gcc gnumake \
 # Note that LIBGL_DRIVERS_DIR needs to be set after calling $glsetup,
 # because it needs to call glxinfo from the system context not Nix context
 
+if [ $PKG_CONFIG_PATH ]; then
+  PKG_CONFIG_PATH=$saved_PKG_CONFIG_PATH
+fi
+
 if [ $SUPERDEBUG_NGL ]; then
   set +x
 fi
+
