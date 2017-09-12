@@ -265,7 +265,7 @@ install_so_file_and_deps() {
   done
 }
 
-
+echo "Attempting kludge for GL graphics under Nix..."
 if [ $SUPERDEBUG_NGL ]; then
   set -e
   set -x
@@ -338,5 +338,7 @@ if [ $SUPERDEBUG_NGL ]; then
   set +x
   set +e
 fi
+
+echo "Nix GL Kludge complete"
 
 
