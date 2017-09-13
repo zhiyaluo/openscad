@@ -34,7 +34,7 @@
 # that path requires root access and doesnt always persist across reboots.
 # The DRI .so driver files depend on many other .so libraries that Nix's
 # loader cannot easily find or work with. For example the usual trick
-# of setting LD_LIBRARY_PATH trick doesn't work very well.
+# of setting LD_LIBRARY_PATH doesn't work very well.
 #
 # Therefore, we find the DRI drivers ourselves, copy them to a
 # subfolder, find their dependency .so files, copy them as well to the
@@ -62,6 +62,7 @@
 # https://stackoverflow.com/questions/5103443/how-to-check-what-shared-libraries-are-loaded-at-run-time-for-a-given-process
 # https://superuser.com/questions/1144758/overwrite-default-lib64-ld-linux-x86-64-so-2-to-call-executables
 # https://stackoverflow.com/a/3450447
+# https://nixos.wiki/wiki/Cheatsheet
 
 # glxinfo can hang, so we need to run it a special way
 run_glxinfo() {
@@ -185,6 +186,11 @@ find_driver_used_by_glxinfo() {
   fi
   drilines1=`cat $logfile | grep -i ^libGL.*opendriver | tail -1`
   drifilepath=`echo $drilines1 | awk ' { print $4 } '`
+  if [ ! -e "`echo $drifilepath`" ]; then
+    echo glxinfo did not put out Mesa debug info. could not determine
+    echo underlying driver. exiting.
+    exit
+  fi
   echo $drifilepath
 }
 
@@ -252,6 +258,10 @@ install_so_file_and_deps() {
   SO_FILEPATH=$1
   DEST_DIR=$2
   DEPLIST_LOGFILE=$3
+  if [ ! -d $DEST_DIR ]; then
+    echo $DEST_DIR wasnt a directory. unrecoverable error $*, exiting.
+    exit
+  fi
   install_under_specialdir $SO_FILEPATH $DEST_DIR
   NEW_SO_FILEPATH=$DEST_DIR/`basename $SO_FILEPATH`
 
@@ -284,8 +294,11 @@ LDD_FULLEXEC=`readlink -f $LDD_FULLEXEC`
 if [ -d $NIX_KLUDGE_GL_DIR ]; then
   # prevent disasters
   if [ "`echo $NIX_KLUDGE_GL_DIR| grep $PWD`" ]; then
-    rm -f $NIX_KLUDGE_GL_DIR/*
-    rmdir $NIX_KLUDGE_GL_DIR
+    if [ $NIX_KLUDGE_GL_DIR != "/" ]; then
+      if [ -d $NIX_KLUDGE_GL_DIR ]; then
+        rm -rf $NIX_KLUDGE_GL_DIR/*
+      fi
+    fi
   else
     echo please use a target directory that is under present directory $PWD
     exit
@@ -299,7 +312,7 @@ log_executables $gllog
 
 echo "finding and copying DRI driver .so file + dependencies"
 SYS_DRI_SO_FILEPATH=$(find_driver_used_by_glxinfo $NIX_KLUDGE_GL_DIR)
-DEPLIST=$1/kludgegl-driver-deplist.txt
+DEPLIST=$NIX_KLUDGE_GL_DIR/kludgegl-driver-deplist.txt
 install_so_file_and_deps $SYS_DRI_SO_FILEPATH $NIX_KLUDGE_GL_DIR $DEPLIST
 
 echo "finding and copying swrast DRI driver .so file + dependencies"
