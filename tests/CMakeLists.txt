@@ -694,6 +694,7 @@ set(CORE_SOURCES
   ../src/UserModule.cc 
   ../src/GroupModule.cc 
   ../src/AST.cc 
+  ../src/Assignment.cc 
   ../src/ModuleInstantiation.cc 
   ../src/ModuleCache.cc 
   ../src/StatCache.cc
@@ -747,7 +748,6 @@ set(CORE_SOURCES
   ../src/libsvg/transformation.cc
   ../src/libsvg/util.cc
   ../src/clipper-utils.cc
-  ../src/Assignment.cc
   ../src/annotation.cc 
   ../src/ext/polyclipping/clipper.cpp
   ../src/${PLATFORMUTILS_SOURCE}

@@ -48,7 +48,7 @@ public:
 																					 EvalContext *evalctx) const override;
 
 private:
-	const FileModule::ModuleContainer *usedlibs_p;
+	std::vector<shared_ptr<UseNode>> usedlibs;
 
 	// This sub_* method is needed to minimize stack usage only.
 	ValuePtr sub_evaluate_function(const std::string &name, 

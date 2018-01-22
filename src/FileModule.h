@@ -21,26 +21,28 @@ public:
 
 	void setModulePath(const std::string &path) { this->path = path; }
 	const std::string &modulePath() const { return this->path; }
-	void registerUse(const std::string path);
-	void registerInclude(const std::string &localpath, const std::string &fullpath);
+	void addUseNode(const UseNode &usenode);
+	void resolveUseNodes();
+	void addIncludeNode(const IncludeNode &includenode);
+	void resolveIncludeNodes();
 	time_t includesChanged() const;
 	time_t handleDependencies();
-	bool hasIncludes() const { return !this->includes.empty(); }
-	bool usesLibraries() const { return !this->usedlibs.empty(); }
+	bool hasExternals() const { return !this->externalDict.empty(); }
 	bool isHandlingDependencies() const { return this->is_handling_dependencies; }
+	void resolveExternals();
 
+	std::vector<shared_ptr<UseNode>> getUseNodes() const;
+	
 	LocalScope scope;
-	typedef std::unordered_set<std::string> ModuleContainer;
-	ModuleContainer usedlibs;
+	std::unordered_map<std::string, shared_ptr<ExternalNode>> externalDict;
+	std::vector<shared_ptr<ExternalNode>> externalList;
 private:
 	struct IncludeFile {
 		std::string filename;
 	};
 
-	time_t include_modified(const IncludeFile &inc) const;
+	time_t includeModified(const IncludeNode &node) const;
 
-	typedef std::unordered_map<std::string, struct IncludeFile> IncludeContainer;
-	IncludeContainer includes;
 	bool is_handling_dependencies;
 
 	std::string path;

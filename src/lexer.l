@@ -95,7 +95,6 @@ int yycolumn = 1;
 
 extern void parsererror(char const *s);
 void to_utf8(const char *, char *);
-void includefile();
 fs::path sourcefile();
 std::vector<fs::path> filename_stack;
 std::vector<int> lineno_stack;
@@ -130,7 +129,12 @@ include[ \t\r\n]*"<"	{ BEGIN(cond_include); filepath = filename = ""; }
 <cond_include>{
 [^\t\r\n>]*"/"	{ filepath = yytext; }
 [^\t\r\n>/]+	{ filename = yytext; }
-">"		{ BEGIN(INITIAL); includefile(); }
+">"		{
+	BEGIN(INITIAL);
+	auto localpath = (fs::path{filepath} / filename).generic_string();
+        parserlval.text = strdup(localpath.c_str());
+	return TOK_INCLUDE;
+    }
 <<EOF>>         { parsererror("Unterminated include statement"); return TOK_ERROR; }
 }
 
@@ -138,16 +142,9 @@ include[ \t\r\n]*"<"	{ BEGIN(cond_include); filepath = filename = ""; }
 use[ \t\r\n]*"<"	{ BEGIN(cond_use); }
 <cond_use>{
 [^\t\r\n>]+	{ filename = yytext; }
- ">"		{
+">"		{
 	BEGIN(INITIAL);
-        fs::path fullpath = find_valid_path(sourcefile().parent_path(), fs::path(filename), &openfilenames);
-	if (fullpath.empty()) {
-          PRINTB("WARNING: Can't open library '%s'.", filename);
-          parserlval.text = strdup(filename.c_str());
-	} else {
-          handle_dep(fullpath.generic_string());
-          parserlval.text = strdup(fullpath.string().c_str());
-	}
+        parserlval.text = strdup(filename.c_str());
         return TOK_USE;
     }
 <<EOF>>         { parsererror("Unterminated use statement"); return TOK_ERROR; }
@@ -273,49 +270,6 @@ fs::path sourcefile()
   if (!filename_stack.empty()) return filename_stack.back();
 
   return parser_sourcefile;
-}
-
-/*
-  Rules for include <path/file>
-  1) include <sourcepath/path/file>
-  2) include <librarydir/path/file>
-
-  Globals used: filepath, sourcefile, filename
- */
-void includefile()
-{
-  fs::path localpath = fs::path(filepath) / filename;
-  fs::path fullpath = find_valid_path(sourcefile().parent_path(), localpath, &openfilenames);
-  if (!fullpath.empty()) {
-    rootmodule->registerInclude(localpath.generic_string(), fullpath.generic_string());
-  }
-  else {
-    rootmodule->registerInclude(localpath.generic_string(), localpath.generic_string());
-    PRINTB("WARNING: Can't open include file '%s'.", localpath.generic_string());
-    return;
-  };
-
-  std::string fullname = fullpath.generic_string();
-
-  filepath.clear();
-  filename_stack.push_back(fullpath);
-
-  handle_dep(fullname);
-
-  yyin = fopen(fullname.c_str(), "r");
-  if (!yyin) {
-    PRINTB("WARNING: Can't open include file '%s'.", localpath.generic_string());
-    filename_stack.pop_back();
-    return;
-  }
-
-  lineno_stack.push_back(yylineno);
-  yylineno = 1;
-  openfiles.push_back(yyin);
-  openfilenames.push_back(fullname);
-  filename.clear();
-
-  yypush_buffer_state(yy_create_buffer(yyin, YY_BUF_SIZE));
 }
 
 /*!

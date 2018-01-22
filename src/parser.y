@@ -99,6 +99,7 @@ fs::path parser_sourcefile;
 %token <text> TOK_ID
 %token <text> TOK_STRING
 %token <text> TOK_USE
+%token <text> TOK_INCLUDE
 %token <number> TOK_NUMBER
 
 %token TOK_TRUE
@@ -153,7 +154,13 @@ fs::path parser_sourcefile;
 input:    /* empty */
         | TOK_USE
             {
-              rootmodule->registerUse(std::string($1));
+              rootmodule->addUseNode(UseNode(std::string($1), LOC(@$)));
+              free($1);
+            }
+          input
+        | TOK_INCLUDE
+            {
+              rootmodule->addIncludeNode(IncludeNode(std::string($1), LOC(@$)));
               free($1);
             }
           input

@@ -408,6 +408,8 @@ int cmdline(const char *deps_output_file, const std::string &filename, Camera &c
 		PRINTB("Can't parse file '%s'!\n", filename.c_str());
 		return 1;
 	}
+	// FIXME: If we want to export as AST, we should export _before_ resolving includes
+	root_module->resolveExternals();
 
 	if (Feature::ExperimentalCustomizer.is_enabled()) {
 		// add parameter to AST

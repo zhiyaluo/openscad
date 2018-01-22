@@ -160,7 +160,7 @@ std::string ModuleContext::dump(const AbstractModule *mod, const ModuleInstantia
 }
 #endif
 
-FileContext::FileContext(const Context *parent) : ModuleContext(parent), usedlibs_p(nullptr)
+FileContext::FileContext(const Context *parent) : ModuleContext(parent)
 {
 }
 
@@ -184,9 +184,9 @@ ValuePtr FileContext::evaluate_function(const std::string &name,
 	const auto foundf = findLocalFunction(name);
 	if (foundf) return foundf->evaluate(this, evalctx);
 
-	for (const auto &m : *this->usedlibs_p) {
+	for (const auto &lib : this->usedlibs) {
 		// usedmod is nullptr if the library wasn't be compiled (error or file-not-found)
-		auto usedmod = ModuleCache::instance()->lookup(m);
+		auto usedmod = ModuleCache::instance()->lookup(lib->filename);
 		if (usedmod && usedmod->scope.functions.find(name) != usedmod->scope.functions.end())
 			return sub_evaluate_function(name, evalctx, usedmod);
 	}
@@ -199,8 +199,8 @@ AbstractNode *FileContext::instantiate_module(const ModuleInstantiation &inst, E
 	const auto foundm = this->findLocalModule(inst.name());
 	if (foundm) return foundm->instantiate(this, &inst, evalctx);
 
-	for (const auto &m : *this->usedlibs_p) {
-		auto usedmod = ModuleCache::instance()->lookup(m);
+	for (const auto &lib : this->usedlibs) {
+		auto usedmod = ModuleCache::instance()->lookup(lib->filename);
 		// usedmod is nullptr if the library wasn't be compiled (error or file-not-found)
 		if (usedmod &&
 				usedmod->scope.modules.find(inst.name()) != usedmod->scope.modules.end()) {
@@ -221,8 +221,11 @@ AbstractNode *FileContext::instantiate_module(const ModuleInstantiation &inst, E
 void FileContext::initializeModule(const class FileModule &module)
 {
 	if (!module.modulePath().empty()) this->document_path = module.modulePath();
+
+	// FIXME: Should we handle FileModule::includenodes here?
+	
 	// FIXME: Don't access module members directly
-	this->usedlibs_p = &module.usedlibs;
+	this->usedlibs = module.getUseNodes();
 	this->functions_p = &module.scope.functions;
 	this->modules_p = &module.scope.modules;
 	for (const auto &ass : module.scope.assignments) {

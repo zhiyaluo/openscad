@@ -27,6 +27,8 @@
 #include "comment.h"
 #include "openscad.h"
 #include "GeometryCache.h"
+#include "FileModule.h"
+#include "modcontext.h"
 #include "ModuleCache.h"
 #include "MainWindow.h"
 #include "OpenSCADApp.h"
@@ -971,8 +973,7 @@ void MainWindow::compile(bool reload, bool forcedone, bool rebuildParameterWidge
 	// If we're auto-reloading, listen for a cascade of changes by starting a timer
 	// if something changed _and_ there are any external dependencies
 	if (reload && didcompile && this->root_module) {
-		if (this->root_module->hasIncludes() ||
-				this->root_module->usesLibraries()) {
+		if (this->root_module->hasExternals()) {
 			this->waitAfterReloadTimer->start();
 			this->procevents = false;
 			return;
@@ -1750,6 +1751,7 @@ void MainWindow::compileTopLevelDocument(bool rebuildParameterWidget)
 	const char* fname = this->fileName.isEmpty() ? "" : fnameba;
 	delete this->parsed_module;
 	this->root_module = parse(this->parsed_module, fulltext.c_str(), fname, false) ? this->parsed_module : nullptr;
+	this->root_module->resolveExternals();
 
 	if (Feature::ExperimentalCustomizer.is_enabled()) {
 		if (this->root_module!=nullptr) {

@@ -107,6 +107,8 @@ time_t ModuleCache::evaluate(const std::string &filename, FileModule *&module)
 		
 		delete cacheEntry.parsed_module;
 		lib_mod = parse(cacheEntry.parsed_module, textbuf.str().c_str(), filename, false) ? cacheEntry.parsed_module : nullptr;
+		lib_mod->resolveExternals();
+
 		PRINTDB("  compiled module: %p", lib_mod);
 		cacheEntry.module = lib_mod;
 		cacheEntry.cache_id = cache_id;
